@@ -88,6 +88,10 @@ class SmokeInputTests(unittest.TestCase):
             self.assertIn("IgnoreJavaWizard=true\n", launcher_config)
             self.assertIn("ApplicationTheme=system\n", launcher_config)
             self.assertIn("IconTheme=pe_colored\n", launcher_config)
+            self.assertEqual(
+                (staged / "minecraft/options.txt").read_text(),
+                "onboardAccessibility:false\n",
+            )
             self.assertFalse((staged / "minecraft/saves").exists())
             self.assertEqual((staged / "minecraft/mods" / probe.name).read_bytes(), b"probe")
 

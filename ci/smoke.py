@@ -107,16 +107,16 @@ def prepare_server_permissions(destination: Path, uid=1000, gid=1000):
             os.chown(path, uid, gid)
 
 
-def set_config_value(path: Path, key: str, value: str):
+def set_config_value(path: Path, key: str, value: str, separator="="):
     lines = path.read_text().splitlines()
-    pattern = re.compile(r"^" + re.escape(key) + r"=")
+    pattern = re.compile(r"^" + re.escape(key) + re.escape(separator))
     updated = False
     for index, line in enumerate(lines):
         if pattern.match(line):
-            lines[index] = f"{key}={value}"
+            lines[index] = f"{key}{separator}{value}"
             updated = True
     if not updated:
-        lines.append(f"{key}={value}")
+        lines.append(f"{key}{separator}{value}")
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -161,6 +161,10 @@ def stage_client(prism_root: Path, instance_id: str, jar: Path, probe: Path, des
         "JoinServerOnLaunch": "false",
     }.items():
         set_config_value(config, key, value)
+    options = staged_instance / "minecraft" / "options.txt"
+    if not options.exists():
+        options.write_text("")
+    set_config_value(options, "onboardAccessibility", "false", separator=":")
     return staged_instance
 
 
