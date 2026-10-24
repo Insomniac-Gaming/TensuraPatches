@@ -4,9 +4,6 @@ A small NeoForge add-on for server-side fixes in Insomniac Gaming's Minecraft
 1.21.1 modpack. Each fix lives in its own package so future fixes can be added
 without changing the identity of the mod.
 
-The project's original code is dedicated to the public domain under the
-[Unlicense](LICENSE). The Gradle wrapper remains under its upstream license.
-
 ## Version 1.0.0
 
 Requires NeoForge 21.1.x and Tensura Horizons 0.31. Blocks both stages of
