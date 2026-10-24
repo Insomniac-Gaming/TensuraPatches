@@ -178,6 +178,10 @@ def stop_container(name: str):
     run("docker", "rm", "-fv", name, check=False, capture=True)
 
 
+def slimethrone_installed(mods_dir: Path) -> bool:
+    return any(mods_dir.glob("SlimeThroneExtras-*.jar"))
+
+
 def server_smoke(args):
     name = f"insomniac-server-smoke-{secrets.token_hex(5)}"
     with tempfile.TemporaryDirectory(prefix="insomniac-server-") as temporary:
@@ -207,6 +211,9 @@ def server_smoke(args):
                     logs = docker_logs(name, "all")
                     if "InsomniacServerPatches loaded" not in logs:
                         raise RuntimeError("server reached RCON, but patch mod load marker was absent")
+                    if (slimethrone_installed(args.snapshot / "mods")
+                            and "SlimeThrone lock/reset mixins disabled (2.1.2.1)" not in logs):
+                        raise RuntimeError("Server reached RCON but SlimeThrone compatibility was not active")
                     print("PASS: Minecraft server reached RCON with InsomniacServerPatches loaded")
                     return
                 time.sleep(5)
@@ -222,7 +229,7 @@ def client_smoke(args):
     name = f"insomniac-client-smoke-{secrets.token_hex(5)}"
     with tempfile.TemporaryDirectory(prefix="insomniac-client-") as temporary:
         prism = Path(temporary) / "prism"
-        stage_client(args.prism_root, args.instance_id, args.jar, args.probe, prism)
+        staged_instance = stage_client(args.prism_root, args.instance_id, args.jar, args.probe, prism)
         command = ["docker", "create", "--name", name, "--memory", args.container_memory,
                    "--cpus", "4", "--shm-size", "2g",
                    "-e", f"PRISM_INSTANCE_ID={args.instance_id}",
@@ -241,6 +248,12 @@ def client_smoke(args):
                 found = run("docker", "exec", name, "grep", "-Fq", READY_MARKER, log_path,
                             check=False, capture=True)
                 if found.returncode == 0:
+                    if slimethrone_installed(staged_instance / "minecraft" / "mods"):
+                        active = run("docker", "exec", name, "grep", "-Fq",
+                                     "SlimeThrone lock/reset mixins disabled (2.1.2.1)",
+                                     log_path, check=False, capture=True)
+                        if active.returncode != 0:
+                            raise RuntimeError("Client reached title but SlimeThrone compatibility was not active")
                     print("PASS: Minecraft client reached the title screen")
                     return
                 time.sleep(5)

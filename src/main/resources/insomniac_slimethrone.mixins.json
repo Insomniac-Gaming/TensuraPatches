@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "priority": 2000,
+  "package": "com.insomniacgaming.serverpatches.mixin.slimethrone",
+  "plugin": "com.insomniacgaming.serverpatches.compat.slimethrone.SlimeThroneMixinFilter",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ServerHooksMixin",
+    "HandleSkillLockMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

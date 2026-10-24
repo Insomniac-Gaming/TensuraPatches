@@ -4,10 +4,18 @@ import unittest
 from pathlib import Path
 from zipfile import ZipFile
 
-from smoke import extract_world, prepare_server_permissions, stage_client, stage_server
+from smoke import extract_world, prepare_server_permissions, slimethrone_installed, stage_client, stage_server
 
 
 class SmokeInputTests(unittest.TestCase):
+    def test_slimethrone_mod_detection(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            mods = Path(temporary) / "mods"
+            mods.mkdir()
+            self.assertFalse(slimethrone_installed(mods))
+            (mods / "SlimeThroneExtras-neoforge-2.1.2.1.jar").write_bytes(b"mod")
+            self.assertTrue(slimethrone_installed(mods))
+
     def test_world_zip_flattens_world_root(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -1,38 +1,72 @@
 # InsomniacServerPatches
 
-A small NeoForge add-on for server-side fixes in Insomniac Gaming's Minecraft
-1.21.1 modpack. Each fix lives in its own package so future fixes can be added
-without changing the identity of the mod.
+NeoForge 1.21.1 compatibility patches for Insomniac Gaming's Tensura modpack.
+Fixes are grouped independently; upstream mods are **not** repackaged.
 
-## Version 1.0.0
+## Version 1.1.0
 
-Requires NeoForge 21.1.x and Tensura Horizons 0.31. Blocks both stages of
-Horizons' Sovereign awakening path:
+### Tensura Horizons 0.31 (original patch)
 
-- Automatic Sovereign Vessel acquisition is suppressed.
-- True Sovereign awakening through the status menu or `/crosshorizon` returns
-  false and tells the player that the awakening is disabled.
+Disables the automatic Sovereign Vessel acquisition and True Sovereign
+awakening through the status menu or `/crosshorizon`. Existing Sovereign data
+is not deleted. The separate Sovereign skill from Tensura Lower is unaffected.
 
-The patch does not remove existing Sovereign progress, skills, or saved data.
-It does not change the separate Sovereign skill from Tensura Lower.
+### SlimeThroneExtras 2.1.2.1 compatibility (new)
 
-## Install
+The pack uses **ReRebirth/ReReroll**, not SlimeThroneExtras, for rebirth, skill
+rerolls, and skill locks. SlimeThroneExtras currently overrides the original
+Tensura lock list and forces the `resetPerSkillLock` gamerule to zero.
 
-Place `InsomniacServerPatches-1.0.0.jar` in the server's `mods/` directory and
-restart the server. The mod can also be included in a client modpack, including
-for integrated singleplayer, but only the server's copy controls a dedicated
-server. Keep the original Tensura Horizons JAR intact. To remove this patch,
-remove this add-on JAR and restart.
+This patch:
+- Prevents SlimeThrone's storage, scroll, reincarnation, and gamerule mixins
+  from loading, retaining Tensura/ReRebirth behavior instead.
+- Disables SlimeThrone's additional skill-removal/lock-restoration handler and
+  its periodic gamerule enforcement, without disabling general sync hooks.
+- On clients, removes SlimeThrone's own skill-lock button and prestige tab,
+  their replacement reset requirements, and the now-unreachable screen hook.
 
-## Build
+**Preserved:** SlimeThrone's added races and their ordinary evolution chains,
+skills, Lootr/Charybdis integration, other items, and nonconflicting gameplay.
+The SlimeThrone quest and Soul Grade data/handlers are not erased or migrated.
+Some commands and internal progression logic remain; this is *not* a complete
+removal of all SlimeThrone mechanics.
 
-Use Java 21 and run `./gradlew clean build`. The release JAR is under
-`build/libs/`. The build does not bundle Tensura Horizons or any of its assets.
+The filter is **pinned to 2.1.2.1** and checks the exact upstream mixin names.
+It uses Mixin internals to remove overrides before they're prepared, so
+revalidate it on every SlimeThrone/Mixin/NeoForge update. If the early filter
+does not succeed, mod initialization aborts rather than silently running with
+unsafe lock behavior. Do not use this on production without a world backup and
+functional testing of locked skills through a reset.
 
-For the disposable server and client startup checks, see [CI setup](ci/README.md).
-The CI-only `InsomniacTitleProbe` is built separately and is never included in
+### Installation
+
+Put `InsomniacServerPatches-1.1.0.jar` in **both** the dedicated server and
+client modpacks, then restart. The client copy is required to remove the
+obsolete SlimeThrone screens and buttons. Leave the original mods installed:
+Tensura Horizons 0.31, and (if used) SlimeThroneExtras 2.1.2.1.
+
+The SlimeThrone dependency is optional so the Horizons-only patch still works
+in environments without SlimeThrone. With SlimeThrone present, only 2.1.2.1 is
+accepted.
+
+### Verification
+
+1. Confirm startup logs contain `Disabled 6 SlimeThrone ... mixins and 2
+   obsolete UI mixins`, without mixin selection exceptions.
+2. Confirm the server reaches RCON **and** the client reaches its main menu.
+3. In-game, check that the old SlimeThrone skill-lock button and prestige tab
+   are absent.
+4. As a prestige-two test player, compare `/rebirth` with the ReReroll skill
+   pool, check `/rebirth locks`, and perform one reset on a backed-up test
+   character to verify locks survive. The 60-versus-73 available-skills issue
+   may be separate from SlimeThrone's lock overrides.
+
+## Build and CI
+
+Build with Java 21: `./gradlew clean build`. The published JAR is under
+`build/libs/`; upstream mods and their assets are **not** bundled.
+
+The Woodpecker startup checks cover a disposable dedicated server through
+RCON and client title screen, not actual player login or reset actions.
+See [CI setup](ci/README.md) for details. The CI-only title probe is not part of
 the published mod JAR.
-
-Before shipping with a new Horizons version, recheck the two target method
-signatures and the awakening flow. The dependency range deliberately permits
-only Horizons 0.31.x.

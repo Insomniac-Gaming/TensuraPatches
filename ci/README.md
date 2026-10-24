@@ -6,6 +6,8 @@ for `main` pushes, approved pull requests targeting `main`, and manual runs on
 input and release-gate tests, starts a disposable Minecraft server, and
 launches a disposable Prism client under Xvfb. The server must reach RCON and
 log the patch load marker; the client must log `INSOMNIAC_CI_TITLE_READY`.
+When SlimeThroneExtras is present, both checks additionally require a log
+marker confirming that the compatibility mixin filter actually activated.
 Containers are removed after each check and no Minecraft port is published.
 These are startup checks, not player-join, gameplay, or production-bootstrap
 tests.
@@ -128,12 +130,12 @@ plus disk for snapshot copies and the Prism image.
 ./gradlew clean build :title-probe:build --no-daemon
 python3 -m unittest discover -s ci -p 'test_*.py'
 python3 ci/smoke.py server --snapshot /path/to/server-copy \
-  --jar build/libs/InsomniacServerPatches-1.0.0.jar \
+  --jar build/libs/InsomniacServerPatches-1.1.0.jar \
   --world /path/to/world.zip
 docker build -f ci/Dockerfile.client -t insomniac-client-smoke:11.1.1 .
 python3 ci/smoke.py client --prism-root /path/to/prism-copy \
   --instance-id 'Tensura by Insomniac Gaming' --profile 'CI profile name' \
-  --jar build/libs/InsomniacServerPatches-1.0.0.jar \
+  --jar build/libs/InsomniacServerPatches-1.1.0.jar \
   --probe ci/title-probe/build/libs/InsomniacTitleProbe-1.0.0.jar
 ```
 
