@@ -1,0 +1,13 @@
+when:
+  - event: [push, pull_request, manual]
+
+steps:
+  - name: build
+    image: eclipse-temurin:21-jdk
+    commands:
+      - ./gradlew clean build :title-probe:build --no-daemon
+
+  - name: smoke-input-tests
+    image: python:3.12-alpine
+    commands:
+      - python -m unittest discover -s ci -p 'test_*.py'

@@ -1,0 +1,38 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="Unlicense"
+
+[[mods]]
+modId="insomniac_server_patches"
+version="1.0.0"
+displayName="InsomniacServerPatches"
+authors="Insomniac Gaming"
+displayTest="IGNORE_SERVER_VERSION"
+description='''
+Server-side fixes for the Insomniac Gaming modpack. Version 1.0.0 disables the
+Sovereign Vessel and True Sovereign awakening path in Tensura Horizons 0.31.
+'''
+
+[[mixins]]
+config="insomniac_server_patches.mixins.json"
+
+[[dependencies.insomniac_server_patches]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.insomniac_server_patches]]
+modId="neoforge"
+type="required"
+versionRange="[21.1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.insomniac_server_patches]]
+modId="tensurahorizons"
+type="required"
+versionRange="[0.31,0.32)"
+ordering="AFTER"
+side="BOTH"

@@ -1,0 +1,13 @@
+.gradle/
+build/
+runs/
+*.log
+__pycache__/
+*.pyc
+# Private smoke inputs belong outside this repository.
+ci-input/
+prism/
+world.zip
+accounts.json
+*.pem
+.env

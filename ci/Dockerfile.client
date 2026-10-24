@@ -1,0 +1,24 @@
+FROM ubuntu:24.04
+
+ARG PRISM_VERSION=11.1.1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl openjdk-21-jre xvfb xauth \
+      libgl1-mesa-dri libegl1 libasound2t64 libxkbcommon-x11-0 \
+      libxcb-cursor0 libfuse2t64 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/prism && cd /opt/prism \
+    && curl -fsSL "https://github.com/PrismLauncher/PrismLauncher/releases/download/${PRISM_VERSION}/PrismLauncher-Linux-x86_64.AppImage" -o PrismLauncher.AppImage \
+    && chmod +x PrismLauncher.AppImage \
+    && ./PrismLauncher.AppImage --appimage-extract >/dev/null \
+    && rm PrismLauncher.AppImage
+
+COPY ci/start-client.sh /usr/local/bin/start-client-smoke
+RUN chmod 755 /usr/local/bin/start-client-smoke
+
+ENV LIBGL_ALWAYS_SOFTWARE=1 \
+    QT_QPA_PLATFORM=xcb \
+    DISPLAY=:99
+
+ENTRYPOINT ["/usr/local/bin/start-client-smoke"]

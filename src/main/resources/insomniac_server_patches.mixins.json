@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.insomniacgaming.serverpatches.mixin.horizons",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "SovereignProgressEventsMixin",
+    "SovereignAwakeningMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

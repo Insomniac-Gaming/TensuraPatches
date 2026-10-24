@@ -1,0 +1,5 @@
+.gradle
+build
+ci/title-probe/build
+ci/title-probe/.gradle
+.git
