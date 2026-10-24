@@ -130,12 +130,12 @@ plus disk for snapshot copies and the Prism image.
 ./gradlew clean build :title-probe:build --no-daemon
 python3 -m unittest discover -s ci -p 'test_*.py'
 python3 ci/smoke.py server --snapshot /path/to/server-copy \
-  --jar build/libs/InsomniacServerPatches-1.1.0.jar \
+  --jar build/libs/InsomniacServerPatches-0.2.0.jar \
   --world /path/to/world.zip
 docker build -f ci/Dockerfile.client -t insomniac-client-smoke:11.1.1 .
 python3 ci/smoke.py client --prism-root /path/to/prism-copy \
   --instance-id 'Tensura by Insomniac Gaming' --profile 'CI profile name' \
-  --jar build/libs/InsomniacServerPatches-1.1.0.jar \
+  --jar build/libs/InsomniacServerPatches-0.2.0.jar \
   --probe ci/title-probe/build/libs/InsomniacTitleProbe-1.0.0.jar
 ```
 
@@ -149,9 +149,28 @@ isolated test requires adjustment.
 1. Confirm the `main` push pipeline passed and GitHub shows
    `ci/woodpecker/push/tests` as successful on the **exact commit** to tag.
 2. Confirm the version in `build.gradle` matches the tag (for example,
-   `version = '1.0.0'` and `v1.0.0`).
+   `version = '0.2.0'` and `v0.2.0`).
 3. Tag that tested commit and push the tag. If tests are still pending, the
    GitHub workflow fails immediately; rerun it after Woodpecker succeeds.
 4. Check the GitHub Release contains only the release mod JAR. If repository
    or organization Actions settings prevent `GITHUB_TOKEN` from writing a
    release, allow this workflow's declared `contents: write` permission.
+
+## Release notes
+
+Edit the topmost `## [X.Y.Z]` entry in [`CHANGELOG.md`](../CHANGELOG.md)
+as part of the release commit. Write for players and server operators, not from
+the commit log. Keep its version synchronized with `build.gradle`, the main
+`neoforge.mods.toml`, and the `vX.Y.Z` tag. `ci/release_notes.py` validates
+these three versions and extracts only that changelog entry for the GitHub
+Release. A missing or mismatched entry blocks release publication.
+
+To preview locally:
+
+```bash
+python3 ci/release_notes.py --version 0.2.0 --output /tmp/insomniac-release-notes.md
+cat /tmp/insomniac-release-notes.md
+```
+
+The tagged commit still needs a successful Woodpecker **push** run on `main`.
+Release notes are not auto-generated from commits.

@@ -36,6 +36,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Prepare release notes
+        run: python3 ci/release_notes.py --version "${GITHUB_REF_NAME#v}" --output release-notes.md
+
       - name: Build release JAR
         run: ./gradlew clean jar --no-daemon
 
@@ -46,4 +49,4 @@ jobs:
           set -euo pipefail
           jar="build/libs/InsomniacServerPatches-${GITHUB_REF_NAME#v}.jar"
           test -f "$jar" || { echo "Tag version does not match the built JAR" >&2; exit 1; }
-          gh release create "$GITHUB_REF_NAME" "$jar" --verify-tag --generate-notes --repo "$GITHUB_REPOSITORY"
+          gh release create "$GITHUB_REF_NAME" "$jar" --verify-tag --notes-file release-notes.md --repo "$GITHUB_REPOSITORY"
