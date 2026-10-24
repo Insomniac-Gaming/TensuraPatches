@@ -2,6 +2,10 @@ name: Build
 
 on:
   push:
+    branches:
+      - main
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
 
@@ -33,3 +37,25 @@ jobs:
           name: InsomniacServerPatches
           path: build/libs/InsomniacServerPatches-*.jar
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: InsomniacServerPatches
+          path: dist
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jar="dist/InsomniacServerPatches-${GITHUB_REF_NAME#v}.jar"
+          test -f "$jar" || { echo "Tag version does not match the built JAR" >&2; exit 1; }
+          gh release create "$GITHUB_REF_NAME" "$jar" --verify-tag --generate-notes --repo "$GITHUB_REPOSITORY"

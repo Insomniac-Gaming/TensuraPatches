@@ -4,8 +4,10 @@ The public repository uses GitHub Actions:
 
 - `.github/workflows/build.yml` compiles the release mod and CI-only title
   probe, runs input validation tests, and uploads the release JAR as a workflow
-  artifact. It runs on pushes, pull requests, and manual dispatch. It needs no
-  secrets, host mounts, or Docker socket.
+  artifact. It runs on `main` pushes, pull requests, manual dispatch, and
+  version tags. A successful `v*` tag build publishes a GitHub Release with
+  that JAR. It needs no configured secrets, host mounts, or Docker socket;
+  the release job uses GitHub's temporary `GITHUB_TOKEN`.
 
 The separate `ci/private-smoke.woodpecker.yml` is a template for a **private**
 CI repository. It fetches reviewed `main` from the public source repository,
@@ -88,6 +90,13 @@ GitHub Actions runs the public build workflow from this repository. Check the
 repository's Actions tab after a push and enable Actions in repository settings
 if the organization has disabled them. The downloadable workflow artifact is
 the release mod JAR; the CI-only title probe is not uploaded.
+
+After the private smoke check passes, tag the **same commit** that its
+`fetch-public-source` step printed. For version 1.0.0, use `v1.0.0`. Push the
+tag to start the release workflow. The tag version must match the JAR version
+in `build.gradle`; the release job fails if they differ. Do not tag an untested
+commit. The release job uploads only the release mod JAR and generates notes
+from GitHub. No CurseForge upload is configured yet.
 
 Create a separate private GitHub repository for the smoke runner. Copy
 `ci/private-smoke.woodpecker.yml` into that repository as `.woodpecker/smoke.yml`
