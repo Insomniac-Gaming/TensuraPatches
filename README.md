@@ -14,6 +14,12 @@ Disables the automatic Sovereign Vessel acquisition and True Sovereign
 awakening through the status menu or `/crosshorizon`. Existing Sovereign data
 is not deleted. The separate Sovereign skill from Tensura Lower is unaffected.
 
+Also clears Horizons' Void Spirit contract when Tensura performs a full reset
+(including ReRebirth's configured `resetMode: everything`). Full resets remove
+the granted void magic; clearing the contract lets prayer at a Praying Path
+award a new Void Spirit and its magic. Existing contracts are not changed until
+that player completes a full reset.
+
 ### SlimeThroneExtras 2.1.2.1 compatibility
 
 The pack uses **ReRebirth/ReReroll**, not SlimeThroneExtras, for rebirth, skill
@@ -74,6 +80,9 @@ accepted.
    do not reactivate quests or discard saved quest data. Generate a new
    Charybdis structure to confirm Lootr conversion; startup alone cannot
    establish that the processor ran.
+6. With a disposable player who has a Void Spirit, run a full reset and check
+   `/voidspirit status` shows no contract. Pray at a Praying Path until a new
+   Void Spirit is awarded, then check the corresponding void magic is present.
 
 ## Build and CI
 
