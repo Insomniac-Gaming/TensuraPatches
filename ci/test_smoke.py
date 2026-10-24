@@ -83,6 +83,11 @@ class SmokeInputTests(unittest.TestCase):
             config = (staged / "instance.cfg").read_text()
             self.assertIn("JavaPath=/usr/lib/jvm/java-21-openjdk-amd64/bin/java", config)
             self.assertIn("PreLaunchCommand=\n", config)
+            launcher_config = (root / "stage/prismlauncher.cfg").read_text()
+            self.assertIn("Language=en_US\n", launcher_config)
+            self.assertIn("IgnoreJavaWizard=true\n", launcher_config)
+            self.assertIn("ApplicationTheme=system\n", launcher_config)
+            self.assertIn("IconTheme=pe_colored\n", launcher_config)
             self.assertFalse((staged / "minecraft/saves").exists())
             self.assertEqual((staged / "minecraft/mods" / probe.name).read_bytes(), b"probe")
 

@@ -133,6 +133,14 @@ def stage_client(prism_root: Path, instance_id: str, jar: Path, probe: Path, des
         if not source.is_file():
             raise ValueError(f"Prism root is missing {name}")
         safe_copy(source, destination / name)
+    launcher_config = destination / "prismlauncher.cfg"
+    for key, value in {
+        "Language": "en_US",
+        "IgnoreJavaWizard": "true",
+        "ApplicationTheme": "system",
+        "IconTheme": "pe_colored",
+    }.items():
+        set_config_value(launcher_config, key, value)
     staged_instance = destination / "instances" / instance_id
     safe_copy(instance, staged_instance, CLIENT_INSTANCE_EXCLUDE)
     mods = staged_instance / "minecraft" / "mods"
