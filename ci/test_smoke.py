@@ -1,9 +1,10 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from zipfile import ZipFile
 
-from smoke import extract_world, stage_client, stage_server
+from smoke import extract_world, prepare_server_permissions, stage_client, stage_server
 
 
 class SmokeInputTests(unittest.TestCase):
@@ -40,6 +41,25 @@ class SmokeInputTests(unittest.TestCase):
             (root / "snapshot/mods/Tensura_Horizons-0.31.jar").write_bytes(b"horizons")
             stage_server(root / "snapshot", jar, root / "stage", None)
             self.assertEqual((root / "stage/mods" / jar.name).read_bytes(), b"addon")
+
+    def test_server_staging_is_writable_without_changing_snapshot(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mods = root / "snapshot/mods"
+            mods.mkdir(parents=True)
+            horizons = mods / "Tensura_Horizons-0.31.jar"
+            horizons.write_bytes(b"horizons")
+            horizons.chmod(0o400)
+            mods.chmod(0o500)
+            jar = root / "InsomniacServerPatches-1.0.0.jar"
+            jar.write_bytes(b"addon")
+            stage = root / "stage"
+            stage_server(root / "snapshot", jar, stage, None)
+            prepare_server_permissions(stage, os.getuid(), os.getgid())
+            self.assertEqual((stage / "mods").stat().st_mode & 0o700, 0o700)
+            self.assertEqual((stage / "mods" / horizons.name).stat().st_mode & 0o600, 0o600)
+            self.assertEqual(mods.stat().st_mode & 0o700, 0o500)
+            self.assertEqual(horizons.stat().st_mode & 0o600, 0o400)
 
     def test_client_staging_removes_host_commands_and_saved_worlds(self):
         with tempfile.TemporaryDirectory() as temporary:

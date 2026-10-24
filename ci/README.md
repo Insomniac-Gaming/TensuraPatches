@@ -110,6 +110,9 @@ Do not copy the live server's entire `/data`, backups, logs, or secrets. The
 world ZIP can contain `level.dat` at its root or inside one enclosing folder;
 the runner rejects traversal, symlinks, and archives above 20 GiB
 uncompressed. It does not write to these inputs.
+The server smoke runner copies the snapshot into a disposable container and
+gives the Minecraft user ownership of that copy, so mods can write their
+configuration and generated files without changing the protected snapshot.
 
 Use a dedicated CI copy of Prism data, not a mount of a live desktop profile.
 Keep `accounts.json` readable only to the CI operator and agent. The staged

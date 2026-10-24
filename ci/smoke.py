@@ -2,6 +2,7 @@
 """Run disposable Minecraft server and client boot checks through Docker."""
 
 import argparse
+import os
 from pathlib import Path, PurePosixPath
 import re
 import secrets
@@ -95,6 +96,17 @@ def stage_server(snapshot: Path, jar: Path, destination: Path, world: Path | Non
     return release
 
 
+def prepare_server_permissions(destination: Path, uid=1000, gid=1000):
+    """Give the disposable server's user ownership of its staged files."""
+    for path in (destination, *destination.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"symlink input is not allowed: {path}")
+        mode = path.stat().st_mode
+        path.chmod(mode | (0o700 if path.is_dir() else 0o600))
+        if (path.stat().st_uid, path.stat().st_gid) != (uid, gid):
+            os.chown(path, uid, gid)
+
+
 def set_config_value(path: Path, key: str, value: str):
     lines = path.read_text().splitlines()
     pattern = re.compile(r"^" + re.escape(key) + r"=")
@@ -159,6 +171,7 @@ def server_smoke(args):
     with tempfile.TemporaryDirectory(prefix="insomniac-server-") as temporary:
         data = Path(temporary) / "data"
         stage_server(args.snapshot, args.jar, data, args.world)
+        prepare_server_permissions(data)
         password = secrets.token_urlsafe(18)
         command = ["docker", "create", "--name", name, "--memory", args.container_memory,
                    "--cpus", "4", "-e", "EULA=TRUE", "-e", "TYPE=NEOFORGE",
@@ -169,7 +182,7 @@ def server_smoke(args):
                    args.image]
         try:
             run(*command)
-            run("docker", "cp", str(data) + "/.", name + ":/data/")
+            run("docker", "cp", "-a", str(data) + "/.", name + ":/data/")
             run("docker", "start", name)
             deadline = time.monotonic() + args.timeout
             while time.monotonic() < deadline:
