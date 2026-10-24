@@ -15,6 +15,7 @@ steps:
   - name: unit-tests
     image: python:3.12-alpine
     commands:
+      - apk add --no-cache git
       - python3 -m unittest discover -s ci -p 'test_*.py'
 
   - name: server-start
