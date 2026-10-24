@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Consume pending changes on a version bump; read the log for a tagged release."""
+"""Compile pending changes during a tagged release."""
 
 import argparse
 import re
-import subprocess
 from pathlib import Path
 
 VERSION = re.compile(r"\d+\.\d+\.\d+\Z")
@@ -21,25 +20,6 @@ def parse_version(properties: str) -> str:
 
 def read_version(root: Path) -> str:
     return parse_version((root / "gradle.properties").read_text(encoding="utf-8"))
-
-
-def version_at_ref(root: Path, ref: str) -> tuple[str, bool]:
-    def show(path: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(["git", "show", f"{ref}:{path}"], cwd=root,
-                              text=True, capture_output=True, check=False)
-
-    properties = show("gradle.properties")
-    if properties.returncode == 0:
-        if PROPERTY.search(properties.stdout):
-            return parse_version(properties.stdout), False
-    # The first push after adopting gradle.properties still has a static Gradle
-    # version in its parent. This fallback is only for that migration commit.
-    old_build = show("build.gradle")
-    if old_build.returncode == 0:
-        match = re.search(r"(?m)^version\s*=\s*['\"](\d+\.\d+\.\d+)['\"]", old_build.stdout)
-        if match:
-            return match.group(1), True
-    raise ValueError(f"Cannot read the previous version at {ref}")
 
 
 def compile_fragments(root: Path, version: str) -> str:
@@ -61,25 +41,19 @@ def compile_fragments(root: Path, version: str) -> str:
     return f"## [{version}]\n\n" + "\n\n".join(sections) + "\n"
 
 
-def consume_changes(root: Path, previous_version: str, *, allow_same_version: bool = False) -> bool:
-    current = read_version(root)
-    if not VERSION.fullmatch(previous_version):
-        raise ValueError(f"Invalid previous version {previous_version!r}")
-    current_parts = tuple(map(int, current.split(".")))
-    previous_parts = tuple(map(int, previous_version.split(".")))
-    if current_parts < previous_parts:
-        raise ValueError(f"Version decreased from {previous_version} to {current}")
-    if current_parts == previous_parts and not allow_same_version:
-        return False
+def compile_release(root: Path, version: str) -> str:
+    validate_project_version(root, version)
     changelog_path = root / "CHANGELOG.md"
     existing = changelog_path.read_text(encoding="utf-8")
-    if any(match.group(1) == current for match in HEADING.finditer(existing)):
-        raise ValueError(f"CHANGELOG.md already contains version {current}")
-    section = compile_fragments(root, current)
-    changelog_path.write_text(merge_changelog(existing, current, section), encoding="utf-8")
+    if any(match.group(1) == version for match in HEADING.finditer(existing)):
+        raise ValueError(f"CHANGELOG.md already contains version {version}")
+    section = compile_fragments(root, version)
+    compiled = merge_changelog(existing, version, section)
+    notes = extract_version_notes(compiled, version)
+    changelog_path.write_text(compiled, encoding="utf-8")
     for path in (root / "changes").glob("*.md"):
         path.unlink()
-    return True
+    return notes
 
 
 def preview_changes(root: Path) -> str:
@@ -130,35 +104,21 @@ def validate_project_version(root: Path, version: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--version", help="SemVer from release tag, without leading v")
-    mode.add_argument("--compile-after-ref", help="Git commit before the version-bump push")
+    mode.add_argument("--release", help="SemVer from release tag, without leading v")
     mode.add_argument("--preview", action="store_true", help="Preview pending fragments without consuming them")
     parser.add_argument("--output", type=Path, help="Generated GitHub Release notes file")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
-    if args.compile_after_ref:
-        if not re.fullmatch(r"[0-9a-f]{40,64}", args.compile_after_ref):
-            parser.error("--compile-after-ref must be a commit SHA")
-        old_version, legacy_version = version_at_ref(root, args.compile_after_ref)
-        if consume_changes(root, old_version, allow_same_version=legacy_version):
-            print(f"Compiled {read_version(root)} changes into CHANGELOG.md")
-        else:
-            print("Version did not increase; changelog unchanged")
-        return
     if not args.output:
-        parser.error("--output is required with --version or --preview")
+        parser.error("--output is required")
     if args.preview:
         args.output.write_text(preview_changes(root), encoding="utf-8")
         print(f"Previewed pending v{read_version(root)} changes")
         return
-    validate_project_version(root, args.version)
-    if list((root / "changes").glob("*.md")):
-        raise ValueError("Pending change fragments remain; increment the version and compile first")
-    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
-    notes = extract_version_notes(changelog, args.version)
+    notes = compile_release(root, args.release)
     args.output.write_text(notes, encoding="utf-8")
-    print(f"Prepared release notes for v{args.version} from CHANGELOG.md")
+    print(f"Compiled changelog and release notes for v{args.release}")
 
 
 if __name__ == "__main__":

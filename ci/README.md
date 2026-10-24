@@ -14,24 +14,17 @@ Containers are removed after each check and no Minecraft port is published.
 These are startup checks, not player-join, gameplay, or production-bootstrap
 tests.
 
-GitHub Actions runs [the changelog workflow](../.github/workflows/changelog.yml)
-when `gradle.properties` changes on `main`. When `mod_version` increases, it
-adds pending `changes/*.md` fragments to `CHANGELOG.md`, deletes those
-fragments, and pushes a `Compile changelog for vX.Y.Z [skip ci]` commit. The
-push uses `GITHUB_TOKEN` and only changes the log and fragment files.
-The first push that moves the existing 0.2.0 version into `gradle.properties`
-also compiles its pending fragments.
-Repository rules must allow `github-actions[bot]` to push that generated commit
-to `main`; otherwise the workflow fails without deleting the fragments on the
-remote branch.
-
-[The release workflow](../.github/workflows/build.yml) runs only for `v*`
-tags. It requires the tagged commit to be on `main` and to have a successful
-Woodpecker **push** status with context `ci/woodpecker/push/tests`. For a
-generated changelog commit, it checks the tested parent, but only when the
-generated commit changed the log and deleted fragments. A missing, pending,
-or failed status blocks release. It then builds the JAR and publishes a
-GitHub Release. No live-server installation or CurseForge upload is configured.
+[The GitHub Actions release workflow](../.github/workflows/build.yml) runs
+only for `v*` tags. Editing `mod_version` or adding change fragments does not
+compile the changelog. The tag must point to the current `main` commit, and
+that commit must have a successful Woodpecker **push** status with context
+`ci/woodpecker/push/tests`. A missing, pending, or failed status blocks the
+release. The workflow builds the JAR, compiles pending `changes/*.md` into
+`CHANGELOG.md`, deletes those fragments, and pushes a generated
+`Compile changelog for vX.Y.Z [skip ci]` commit to `main`. It then publishes
+the GitHub Release using the compiled notes. A rerun can reuse that generated
+commit. Repository rules must allow `github-actions[bot]` to push it. No
+live-server installation or CurseForge upload is configured.
 
 ## Configure Woodpecker (repository owner)
 
@@ -158,12 +151,11 @@ isolated test requires adjustment.
 
 ## First release checklist
 
-1. Confirm the `main` push pipeline passed on the version-bump commit, then
-   wait for the changelog workflow's generated commit on `main`. This also
-   applies to the initial 0.2.0 migration.
+1. Confirm the `main` push pipeline passed on the exact commit to tag. The
+   changelog remains pending until this tag triggers the release workflow.
 2. Confirm `mod_version` in `gradle.properties` matches the planned tag.
-3. Tag the generated commit and push the tag. The release gate checks the
-   tested version-bump parent and the generated commit's limited diff.
+3. Tag that tested `main` commit and push the tag. GitHub Actions compiles the
+   changelog, pushes the no-CI commit, and publishes the release.
 4. Check the GitHub Release contains only the release mod JAR. If repository
    or organization Actions settings prevent `GITHUB_TOKEN` from writing a
    release, allow this workflow's declared `contents: write` permission.
@@ -173,10 +165,11 @@ isolated test requires adjustment.
 Write player-facing changes as Markdown fragments directly in `changes/`,
 using files named `01-Section title.md`, `02-Section title.md`, and so on.
 The number controls section order; the rest of the filename becomes a heading.
-Increment `mod_version` in `gradle.properties` when those changes are ready
-for the log. The changelog workflow compiles and consumes them on `main`.
-Gradle uses that same version for the JAR and NeoForge metadata. The tag must
-match it. Release notes are read from the compiled changelog, not from commits.
+Set `mod_version` in `gradle.properties` for the planned release. Gradle uses
+that same version for the JAR and NeoForge metadata. The tag must match it.
+The tag-triggered release workflow compiles and consumes the fragments; a
+version edit alone leaves them untouched. Release notes are not made from
+commit messages.
 
 To preview pending changes locally without deleting them:
 
@@ -185,6 +178,5 @@ python3 ci/release_notes.py --preview --output /tmp/insomniac-release-notes.md
 cat /tmp/insomniac-release-notes.md
 ```
 
-After the generated commit, use `--version X.Y.Z --output ...` to read its
-compiled release notes. The tag workflow only reads the log; it does not
-consume changes.
+The tag workflow runs `--release X.Y.Z --output ...`, which writes the
+changelog, removes the fragments, and prepares the GitHub Release notes.

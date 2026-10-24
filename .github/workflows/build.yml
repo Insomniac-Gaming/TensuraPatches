@@ -23,11 +23,14 @@ jobs:
         run: |
           set -euo pipefail
           commit="$(git rev-parse HEAD)"
-          git merge-base --is-ancestor "$commit" origin/main || {
-            echo "The tagged commit is not on main" >&2
-            exit 1
-          }
-          python3 ci/release_gate.py "$GITHUB_REPOSITORY" "$commit" ci/woodpecker/push/tests "${GITHUB_REF_NAME#v}"
+          main="$(git rev-parse origin/main)"
+          if [ "$main" != "$commit" ]; then
+            [ "$(git rev-parse "$main^" 2>/dev/null)" = "$commit" ] || {
+              echo "The tag must point to the current tested main commit" >&2
+              exit 1
+            }
+          fi
+          python3 ci/release_gate.py "$GITHUB_REPOSITORY" "$main" ci/woodpecker/push/tests "${GITHUB_REF_NAME#v}"
 
       - uses: actions/setup-java@v4
         with:
@@ -36,11 +39,32 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Prepare release notes
-        run: python3 ci/release_notes.py --version "${GITHUB_REF_NAME#v}" --output release-notes.md
-
       - name: Build release JAR
         run: ./gradlew clean jar --no-daemon
+
+      - name: Compile changelog and release notes
+        run: python3 ci/release_notes.py --release "${GITHUB_REF_NAME#v}" --output release-notes.md
+
+      - name: Push compiled changelog
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          tagged="$(git rev-parse HEAD)"
+          main="$(git rev-parse origin/main)"
+          if [ "$main" != "$tagged" ]; then
+            git diff --quiet "$main" -- CHANGELOG.md changes || {
+              echo "Main changed after the tag; cannot push the compiled changelog" >&2
+              exit 1
+            }
+            echo "Compiled changelog already exists on main"
+            exit 0
+          fi
+          git add -- CHANGELOG.md changes
+          version="${GITHUB_REF_NAME#v}"
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Compile changelog for v${version} [skip ci]"
+          git push origin HEAD:main
 
       - name: Publish GitHub Release
         env:

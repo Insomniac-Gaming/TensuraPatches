@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from release_notes import (compile_fragments, consume_changes,
+from release_notes import (compile_fragments, compile_release,
                            extract_version_notes, merge_changelog, preview_changes,
                            validate_project_version)
 
@@ -87,7 +87,7 @@ class ReleaseNotesTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Empty change fragment"):
                 compile_fragments(root, "0.2.0")
 
-    def test_version_increment_consumes_changes_once(self):
+    def test_tagged_release_consumes_changes_once(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "gradle.properties").write_text("mod_version=0.3.0\n")
@@ -95,25 +95,27 @@ class ReleaseNotesTests(unittest.TestCase):
             folder = root / "changes"
             folder.mkdir()
             (folder / "01-Added.md").write_text("- A new feature.\n")
-            self.assertTrue(consume_changes(root, "0.2.0"))
+            notes = compile_release(root, "0.3.0")
             changelog = (root / "CHANGELOG.md").read_text()
+            self.assertIn("- A new feature.", notes)
             self.assertLess(changelog.index("## [0.3.0]"), changelog.index("## [0.2.0]"))
             self.assertIn("- A new feature.", changelog)
             self.assertEqual(list(folder.glob("*.md")), [])
-            self.assertFalse(consume_changes(root, "0.3.0"))
+            with self.assertRaisesRegex(ValueError, "already contains"):
+                compile_release(root, "0.3.0")
             self.assertEqual(changelog, (root / "CHANGELOG.md").read_text())
 
-    def test_version_decrease_and_duplicate_log_block_consumption(self):
+    def test_wrong_tag_and_duplicate_log_block_release(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "gradle.properties").write_text("mod_version=0.2.0\n")
             (root / "CHANGELOG.md").write_text("## [0.2.0]\n\n- Existing.\n")
-            with self.assertRaisesRegex(ValueError, "decreased"):
-                consume_changes(root, "0.3.0")
+            with self.assertRaisesRegex(ValueError, "does not match release tag"):
+                compile_release(root, "0.3.0")
             with self.assertRaisesRegex(ValueError, "already contains"):
-                consume_changes(root, "0.1.0")
+                compile_release(root, "0.2.0")
 
-    def test_initial_migration_compiles_pending_version_without_increment(self):
+    def test_preview_does_not_consume_initial_pending_release(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "gradle.properties").write_text("mod_version=0.2.0\n")
@@ -124,8 +126,8 @@ class ReleaseNotesTests(unittest.TestCase):
             fragment.write_text("- Restored skill locks.\n")
             self.assertIn("Restored skill locks", preview_changes(root))
             self.assertTrue(fragment.exists())
-            self.assertFalse(consume_changes(root, "0.2.0"))
-            self.assertTrue(consume_changes(root, "0.2.0", allow_same_version=True))
+            self.assertNotIn("## [0.2.0]", (root / "CHANGELOG.md").read_text())
+            compile_release(root, "0.2.0")
             self.assertFalse(fragment.exists())
             self.assertIn("## [0.2.0]", (root / "CHANGELOG.md").read_text())
 
