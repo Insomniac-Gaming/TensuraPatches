@@ -3,6 +3,17 @@
 Changes are listed by release, with an emphasis on what players and server
 operators will notice. For setup details, see [README.md](README.md).
 
+## Unreleased
+
+- SlimeThrone's quest and prestige listeners, quest scheduling and assignment,
+  and unused FTB Quests bridge no longer run. Existing quest definitions and
+  player data remain loadable and savable for rollback.
+- Removed `/stextras schedule`, `required`, `player`, `quests`, `race`, and
+  `debug soulgrade-levels` from command completion. The wiki and useful debug
+  tools, including `check-lootr`, remain.
+- The old skill-lock and prestige controls remain hidden; the Imitator menu,
+  added races and skills, and Lootr integration remain available.
+
 ## [0.2.0] - 2026-10-24
 
 ### New: SlimeThroneExtras compatibility

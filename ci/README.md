@@ -8,6 +8,8 @@ launches a disposable Prism client under Xvfb. The server must reach RCON and
 log the patch load marker; the client must log `INSOMNIAC_CI_TITLE_READY`.
 When SlimeThroneExtras is present, both checks additionally require a log
 marker confirming that the compatibility mixin filter actually activated.
+The server check also confirms Lootr processor injection and inspects the
+`/stextras` help tree for removed command branches and retained tools.
 Containers are removed after each check and no Minecraft port is published.
 These are startup checks, not player-join, gameplay, or production-bootstrap
 tests.
@@ -80,7 +82,7 @@ repository:
   prism/
     accounts.json            private; dedicated CI launcher account
     prismlauncher.cfg
-    assets/ libraries/ meta/ java/
+    assets/ libraries/ meta/
     instances/Tensura by Insomniac Gaming/
   world.zip                  optional; one world with one level.dat
 ```

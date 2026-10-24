@@ -14,7 +14,7 @@ import time
 from zipfile import ZipFile
 
 SERVER_DIRS = ("mods", "config", "defaultconfigs", "kubejs", "scripts", "datapacks")
-CLIENT_ROOT_DIRS = ("assets", "libraries", "meta", "java", "icons")
+CLIENT_ROOT_DIRS = ("assets", "libraries", "meta", "icons")
 CLIENT_INSTANCE_EXCLUDE = {"saves", "logs", "screenshots", "backups", "crash-reports"}
 READY_MARKER = "INSOMNIAC_CI_TITLE_READY"
 
@@ -214,6 +214,20 @@ def server_smoke(args):
                     if (slimethrone_installed(args.snapshot / "mods")
                             and "SlimeThrone lock/reset mixins disabled (2.1.2.1)" not in logs):
                         raise RuntimeError("Server reached RCON but SlimeThrone compatibility was not active")
+                    if slimethrone_installed(args.snapshot / "mods"):
+                        if "STExtras: Success! Injected Lootr Processor into" not in logs:
+                            raise RuntimeError("Server reached RCON but SlimeThrone's Lootr processor was not injected")
+                        root_help = run("docker", "exec", name, "rcon-cli", "help", "stextras",
+                                        capture=True).stdout
+                        debug_help = run("docker", "exec", name, "rcon-cli", "help", "stextras", "debug",
+                                         capture=True).stdout
+                        if ("/stextras wiki" not in root_help
+                                or "/stextras debug" not in root_help
+                                or any(f"/stextras {branch}" in root_help for branch in
+                                       ("schedule", "required", "player", "quests", "race"))
+                                or "/stextras debug check-lootr" not in debug_help
+                                or "/stextras debug soulgrade-levels" in debug_help):
+                            raise RuntimeError("SlimeThrone command tree still exposes removed mechanics")
                     print("PASS: Minecraft server reached RCON with InsomniacServerPatches loaded")
                     return
                 time.sleep(5)

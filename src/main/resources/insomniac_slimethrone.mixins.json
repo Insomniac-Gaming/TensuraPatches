@@ -6,6 +6,9 @@
   "plugin": "com.insomniacgaming.serverpatches.compat.slimethrone.SlimeThroneMixinFilter",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "SlimeThroneRegistryMixin",
+    "SlimeThroneCommandsMixin",
+    "SlimeThroneDebugCommandsMixin",
     "ServerHooksMixin",
     "HandleSkillLockMixin"
   ],
