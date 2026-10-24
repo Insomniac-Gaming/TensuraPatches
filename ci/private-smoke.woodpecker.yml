@@ -5,7 +5,7 @@ steps:
   - name: fetch-public-source
     image: alpine:3.20
     environment:
-      SOURCE_REPO_URL: https://github.com/REPLACE_OWNER/InsomniacServerPatches.git
+      SOURCE_REPO_URL: https://github.com/Insomniac-Gaming/TensuraPatches.git
     commands:
       - apk add --no-cache git ca-certificates
       - git clone --depth 1 --branch main "$SOURCE_REPO_URL" source

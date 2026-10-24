@@ -1,10 +1,11 @@
 # CI smoke tests
 
-The public repository has one Woodpecker workflow:
+The public repository uses GitHub Actions:
 
-- `.woodpecker/ci.yml` compiles the release mod and CI-only title probe, then
-  runs input validation tests on pushes and pull requests. It needs no secrets,
-  host mounts, or Docker socket.
+- `.github/workflows/build.yml` compiles the release mod and CI-only title
+  probe, runs input validation tests, and uploads the release JAR as a workflow
+  artifact. It runs on pushes, pull requests, and manual dispatch. It needs no
+  secrets, host mounts, or Docker socket.
 
 The separate `ci/private-smoke.woodpecker.yml` is a template for a **private**
 CI repository. It fetches reviewed `main` from the public source repository,
@@ -57,7 +58,7 @@ profile name shown for the account in Prism Launcher. Restrict this secret to
 itself is not a token, but the client snapshot includes private account data.
 Keep the private CI repository restricted to maintainers, disable its pull
 request runs, and enable trusted host mounts only there. The public source
-repository must remain untrusted and receives no private secrets. The host needs enough
+repository receives no private secrets or host mounts. The host needs enough
 RAM for the 10 GiB server and 12 GiB client container limits, plus disk for
 snapshot copies and the Prism image.
 
@@ -81,16 +82,16 @@ NeoForge `21.1.262`, Minecraft `1.21.1`, and `itzg/minecraft-server:java21`.
 Use `--neoforge`, `--java-memory`, `--container-memory`, or `--timeout` to adjust
 the isolated test if the server snapshot requires it.
 
-## Woodpecker setup
+## GitHub Actions and private Woodpecker setup
 
-Push this project to a public GitHub repository and enable its build workflow
-in `woodpecker.riftwalkerdev.com`. Leave that Woodpecker project **untrusted**.
-Do not give it the Prism account or host snapshot.
+GitHub Actions runs the public build workflow from this repository. Check the
+repository's Actions tab after a push and enable Actions in repository settings
+if the organization has disabled them. The downloadable workflow artifact is
+the release mod JAR; the CI-only title probe is not uploaded.
 
 Create a separate private GitHub repository for the smoke runner. Copy
 `ci/private-smoke.woodpecker.yml` into that repository as `.woodpecker/smoke.yml`
-and replace `REPLACE_OWNER` with the public repository owner. Enable this
-private repository in Woodpecker, disable pull request builds, restrict write
+and enable it in `woodpecker.riftwalkerdev.com`. Disable pull request builds and restrict write
 access, then let an administrator enable trusted volumes for it. Set its
 `prism_profile` secret and populate the private host directory above. The bind
 mount path must exist on whichever Woodpecker agent runs this private job. If
