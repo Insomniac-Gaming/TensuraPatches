@@ -27,7 +27,7 @@ jobs:
             echo "The tagged commit is not on main" >&2
             exit 1
           }
-          python3 ci/release_gate.py "$GITHUB_REPOSITORY" "$commit" ci/woodpecker/push/tests
+          python3 ci/release_gate.py "$GITHUB_REPOSITORY" "$commit" ci/woodpecker/push/tests "${GITHUB_REF_NAME#v}"
 
       - uses: actions/setup-java@v4
         with:

@@ -3,9 +3,10 @@
 NeoForge 1.21.1 compatibility patches for Insomniac Gaming's Tensura modpack.
 Fixes are grouped independently; upstream mods are **not** repackaged.
 
-For operator- and player-facing release notes, see [CHANGELOG.md](CHANGELOG.md).
+For published release notes, see [CHANGELOG.md](CHANGELOG.md). Pending changes
+are in [changes/](changes/).
 
-## Current development build (0.2.0 with unreleased cleanup)
+## Current patch behavior
 
 ### Tensura Horizons 0.31 (original patch)
 
@@ -48,7 +49,7 @@ functional testing of locked skills through a reset.
 
 ### Installation
 
-Put `InsomniacServerPatches-0.2.0.jar` in **both** the dedicated server and
+Put `InsomniacServerPatches-<version>.jar` in **both** the dedicated server and
 client modpacks, then restart. The client copy is required to remove the
 obsolete SlimeThrone screens and buttons. Leave the original mods installed:
 Tensura Horizons 0.31, and (if used) SlimeThroneExtras 2.1.2.1.

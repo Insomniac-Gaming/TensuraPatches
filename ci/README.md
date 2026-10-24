@@ -14,15 +14,24 @@ Containers are removed after each check and no Minecraft port is published.
 These are startup checks, not player-join, gameplay, or production-bootstrap
 tests.
 
-GitHub Actions runs [the release workflow](../.github/workflows/build.yml)
-only for `v*` tags. It requires the tagged commit to be on `main` and to have
-a successful Woodpecker **push** status with context
-`ci/woodpecker/push/tests`. A missing, pending, or failed status blocks the
-release immediately. It then builds the release JAR, checks that the tag's
-version matches the JAR filename, and publishes a GitHub Release. GitHub's
-temporary `GITHUB_TOKEN` is used; no GitHub repository secret or personal
-access token is needed. No live-server installation or CurseForge upload is
-configured.
+GitHub Actions runs [the changelog workflow](../.github/workflows/changelog.yml)
+when `gradle.properties` changes on `main`. When `mod_version` increases, it
+adds pending `changes/*.md` fragments to `CHANGELOG.md`, deletes those
+fragments, and pushes a `Compile changelog for vX.Y.Z [skip ci]` commit. The
+push uses `GITHUB_TOKEN` and only changes the log and fragment files.
+The first push that moves the existing 0.2.0 version into `gradle.properties`
+also compiles its pending fragments.
+Repository rules must allow `github-actions[bot]` to push that generated commit
+to `main`; otherwise the workflow fails without deleting the fragments on the
+remote branch.
+
+[The release workflow](../.github/workflows/build.yml) runs only for `v*`
+tags. It requires the tagged commit to be on `main` and to have a successful
+Woodpecker **push** status with context `ci/woodpecker/push/tests`. For a
+generated changelog commit, it checks the tested parent, but only when the
+generated commit changed the log and deleted fragments. A missing, pending,
+or failed status blocks release. It then builds the JAR and publishes a
+GitHub Release. No live-server installation or CurseForge upload is configured.
 
 ## Configure Woodpecker (repository owner)
 
@@ -131,13 +140,14 @@ plus disk for snapshot copies and the Prism image.
 ```bash
 ./gradlew clean build :title-probe:build --no-daemon
 python3 -m unittest discover -s ci -p 'test_*.py'
+version="$(sed -n 's/^mod_version=//p' gradle.properties)"
 python3 ci/smoke.py server --snapshot /path/to/server-copy \
-  --jar build/libs/InsomniacServerPatches-0.2.0.jar \
+  --jar "build/libs/InsomniacServerPatches-${version}.jar" \
   --world /path/to/world.zip
 docker build -f ci/Dockerfile.client -t insomniac-client-smoke:11.1.1 .
 python3 ci/smoke.py client --prism-root /path/to/prism-copy \
   --instance-id 'Tensura by Insomniac Gaming' --profile 'CI profile name' \
-  --jar build/libs/InsomniacServerPatches-0.2.0.jar \
+  --jar "build/libs/InsomniacServerPatches-${version}.jar" \
   --probe ci/title-probe/build/libs/InsomniacTitleProbe-1.0.0.jar
 ```
 
@@ -148,31 +158,33 @@ isolated test requires adjustment.
 
 ## First release checklist
 
-1. Confirm the `main` push pipeline passed and GitHub shows
-   `ci/woodpecker/push/tests` as successful on the **exact commit** to tag.
-2. Confirm the version in `build.gradle` matches the tag (for example,
-   `version = '0.2.0'` and `v0.2.0`).
-3. Tag that tested commit and push the tag. If tests are still pending, the
-   GitHub workflow fails immediately; rerun it after Woodpecker succeeds.
+1. Confirm the `main` push pipeline passed on the version-bump commit, then
+   wait for the changelog workflow's generated commit on `main`. This also
+   applies to the initial 0.2.0 migration.
+2. Confirm `mod_version` in `gradle.properties` matches the planned tag.
+3. Tag the generated commit and push the tag. The release gate checks the
+   tested version-bump parent and the generated commit's limited diff.
 4. Check the GitHub Release contains only the release mod JAR. If repository
    or organization Actions settings prevent `GITHUB_TOKEN` from writing a
    release, allow this workflow's declared `contents: write` permission.
 
 ## Release notes
 
-Edit the topmost `## [X.Y.Z]` entry in [`CHANGELOG.md`](../CHANGELOG.md)
-as part of the release commit. Write for players and server operators, not from
-the commit log. Keep its version synchronized with `build.gradle`, the main
-`neoforge.mods.toml`, and the `vX.Y.Z` tag. `ci/release_notes.py` validates
-these three versions and extracts only that changelog entry for the GitHub
-Release. A missing or mismatched entry blocks release publication.
+Write player-facing changes as Markdown fragments directly in `changes/`,
+using files named `01-Section title.md`, `02-Section title.md`, and so on.
+The number controls section order; the rest of the filename becomes a heading.
+Increment `mod_version` in `gradle.properties` when those changes are ready
+for the log. The changelog workflow compiles and consumes them on `main`.
+Gradle uses that same version for the JAR and NeoForge metadata. The tag must
+match it. Release notes are read from the compiled changelog, not from commits.
 
-To preview locally:
+To preview pending changes locally without deleting them:
 
 ```bash
-python3 ci/release_notes.py --version 0.2.0 --output /tmp/insomniac-release-notes.md
+python3 ci/release_notes.py --preview --output /tmp/insomniac-release-notes.md
 cat /tmp/insomniac-release-notes.md
 ```
 
-The tagged commit still needs a successful Woodpecker **push** run on `main`.
-Release notes are not auto-generated from commits.
+After the generated commit, use `--version X.Y.Z --output ...` to read its
+compiled release notes. The tag workflow only reads the log; it does not
+consume changes.

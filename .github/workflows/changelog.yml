@@ -1,0 +1,38 @@
+name: Compile changelog
+
+on:
+  push:
+    branches: [main]
+    paths: [gradle.properties]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: compile-changelog-main
+  cancel-in-progress: false
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Consume changes when the version increases
+        run: python3 ci/release_notes.py --compile-after-ref '${{ github.event.before }}'
+
+      - name: Push compiled changelog
+        run: |
+          set -euo pipefail
+          git add -- CHANGELOG.md changes
+          if git diff --cached --quiet; then
+            echo "No version increase to compile"
+            exit 0
+          fi
+          version="$(python3 -c 'from pathlib import Path; from ci.release_notes import read_version; print(read_version(Path.cwd()))')"
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Compile changelog for v${version} [skip ci]"
+          git push origin HEAD:main

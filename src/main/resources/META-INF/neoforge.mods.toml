@@ -4,7 +4,7 @@ license="Unlicense"
 
 [[mods]]
 modId="insomniac_server_patches"
-version="0.2.0"
+version="${mod_version}"
 displayName="InsomniacServerPatches"
 authors="Insomniac Gaming"
 displayTest="IGNORE_SERVER_VERSION"
