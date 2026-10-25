@@ -1,12 +1,13 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.insomniacgaming.serverpatches.mixin.horizons",
+  "package": "com.insomniacgaming.serverpatches.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "SovereignProgressEventsMixin",
-    "SovereignAwakeningMixin",
-    "VoidSpiritResetMixin"
+    "horizons.SovereignProgressEventsMixin",
+    "horizons.SovereignAwakeningMixin",
+    "horizons.VoidSpiritResetMixin",
+    "tensura.SkillUnlockCapacityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

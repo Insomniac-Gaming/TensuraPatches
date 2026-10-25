@@ -9,8 +9,8 @@ displayName="InsomniacServerPatches"
 authors="Insomniac Gaming"
 displayTest="IGNORE_SERVER_VERSION"
 description='''
-Compatibility patches for Tensura Horizons and SlimeThroneExtras. Restores
-Tensura/ReRebirth reset and locking and hides SlimeThrone legacy controls.
+Compatibility patches for Tensura, Tensura Horizons, and SlimeThroneExtras.
+Protects skill unlock capacity, restores reset and locking, and hides legacy controls.
 '''
 
 [[mixins]]
@@ -32,6 +32,13 @@ modId="neoforge"
 type="required"
 versionRange="[21.1,)"
 ordering="NONE"
+side="BOTH"
+
+[[dependencies.insomniac_server_patches]]
+modId="tensura"
+type="required"
+versionRange="[2.0.1.3,2.0.1.4)"
+ordering="AFTER"
 side="BOTH"
 
 [[dependencies.insomniac_server_patches]]

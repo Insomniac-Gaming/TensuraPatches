@@ -1,0 +1,1 @@
+- Require normal Tensura skill unlocks to have enough base and effective maximum magicules, with a separate `mpSkillUnlockRequirementPercent` gamerule for the acquisition threshold.

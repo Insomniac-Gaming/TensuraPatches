@@ -2,12 +2,16 @@ package com.insomniacgaming.serverpatches;
 
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModList;
+import net.minecraft.world.level.GameRules;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 @Mod(InsomniacServerPatches.MOD_ID)
 public final class InsomniacServerPatches {
     public static final String MOD_ID = "insomniac_server_patches";
+    public static final GameRules.Key<GameRules.IntegerValue> MP_SKILL_UNLOCK_REQUIREMENT_PERCENT =
+            GameRules.register("mpSkillUnlockRequirementPercent", GameRules.Category.PLAYER,
+                    GameRules.IntegerValue.create(100));
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public InsomniacServerPatches() {
@@ -19,6 +23,6 @@ public final class InsomniacServerPatches {
             }
             LOGGER.info("SlimeThrone lock/reset mixins disabled (2.1.2.1)");
         }
-        LOGGER.info("InsomniacServerPatches loaded; Horizons awakening disabled; SlimeThrone compatibility enabled when present");
+        LOGGER.info("InsomniacServerPatches loaded; Tensura skill unlocks require base and effective magicules");
     }
 }

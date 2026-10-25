@@ -8,6 +8,25 @@ are in [changes/](changes/).
 
 ## Current patch behavior
 
+### Tensura 2.0.1.3 skill unlock capacity
+
+Normal paid skill unlocks require both the modified maximum magicules and the
+base maximum to cover the unlock cost. The base maximum must also retain the
+attribute's minimum after payment. This prevents temporary capacity bonuses
+from letting a player buy a skill that sends their base capacity into debt.
+Free grants, temporary skills, creative grants, and intrinsic skills still use
+Tensura's existing bypasses. Existing negative base capacity is not repaired.
+
+`/gamerule mpSkillUnlockRequirementPercent` defaults to `100`. Set it above
+100 to require more capacity without changing the amount charged. For example,
+`200` requires more than twice the paid unlock cost in both capacities, plus
+the attribute minimum in base capacity. Values below 100 act as 100. Tensura's
+`mpSkillCost` still determines the amount actually deducted.
+
+This hook is pinned to Tensura 2.0.1.3's unlock handler. Check it again before
+updating Tensura. A local build verifies packaging, but an in-game purchase
+test is needed before server deployment.
+
 ### Tensura Horizons 0.31 (original patch)
 
 Disables the automatic Sovereign Vessel acquisition and True Sovereign
