@@ -12,3 +12,4 @@ world.zip
 accounts.json
 *.pem
 .env
+.env.curseforge

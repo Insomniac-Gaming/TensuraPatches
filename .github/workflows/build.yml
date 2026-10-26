@@ -9,6 +9,10 @@ permissions:
   contents: write
   statuses: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -45,6 +49,12 @@ jobs:
       - name: Compile changelog and release notes
         run: python3 ci/release_notes.py --release "${GITHUB_REF_NAME#v}" --output release-notes.md
 
+      - name: Check CurseForge configuration and version tags
+        env:
+          CURSEFORGE_PROJECT_ID: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: python3 ci/publish_curseforge.py preflight "${GITHUB_REF_NAME#v}"
+
       - name: Push compiled changelog
         run: |
           set -euo pipefail
@@ -73,4 +83,19 @@ jobs:
           set -euo pipefail
           jar="build/libs/InsomniacServerPatches-${GITHUB_REF_NAME#v}.jar"
           test -f "$jar" || { echo "Tag version does not match the built JAR" >&2; exit 1; }
-          gh release create "$GITHUB_REF_NAME" "$jar" --verify-tag --notes-file release-notes.md --repo "$GITHUB_REPOSITORY"
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+                --json assets --jq '.assets[].name' | grep -Fxq "$(basename "$jar")"; then
+              gh release upload "$GITHUB_REF_NAME" "$jar" --repo "$GITHUB_REPOSITORY"
+            fi
+          else
+            gh release create "$GITHUB_REF_NAME" "$jar" --verify-tag \
+              --notes-file release-notes.md --repo "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Publish CurseForge file
+        env:
+          CURSEFORGE_PROJECT_ID: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 ci/publish_curseforge.py upload "${GITHUB_REF_NAME#v}"

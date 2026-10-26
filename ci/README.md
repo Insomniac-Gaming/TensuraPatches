@@ -23,9 +23,33 @@ that commit must have a successful Woodpecker **push** status with context
 release. The workflow builds the JAR, compiles pending `changes/*.md` into
 `CHANGELOG.md`, deletes those fragments, and pushes a generated
 `Compile changelog for vX.Y.Z [skip ci]` commit to `main`. It then publishes
-the GitHub Release using the compiled notes. A rerun can reuse that generated
-commit. Repository rules must allow `github-actions[bot]` to push it. No
-live-server installation or CurseForge upload is configured.
+the GitHub Release and uploads the same JAR and notes to CurseForge. A rerun
+can reuse the generated commit and existing GitHub Release. Repository rules
+must allow `github-actions[bot]` to push it. No live-server installation is
+configured.
+
+## CurseForge publishing
+
+Set both `CURSEFORGE_PROJECT_ID` and `CURSEFORGE_TOKEN` as GitHub Actions
+**secrets**. The ID must be the standalone patch mod's numeric CurseForge
+project ID, not the modpack ID. The token must be an author API token with
+upload access to that project. The workflow checks all five game-version tags
+through the author API before publishing either release. Every CurseForge file
+is uploaded with release type `release` and is published automatically after
+moderation approval.
+
+For a local read-only version-tag check, put the two values in the ignored
+`.env.curseforge` file (mode `0600`). Do not commit or print this file. The
+workflow reads GitHub secrets directly and does not need the local file.
+The release JAR and `release-notes.md` must exist for the full preflight.
+
+The upload step records a hidden marker in the GitHub Release notes before
+calling CurseForge. A successful upload replaces it with the returned file
+ID, so reruns skip that upload. If the upload or marker update has an unknown
+outcome, the `pending` marker blocks reruns. Inspect the patch mod's files in
+CurseForge, including files awaiting moderation. If the file exists, replace
+the marker with `status=file:<file ID>`; if it does not, remove the marker
+before rerunning. Do not blindly retry an uncertain upload.
 
 The release compiler reads `compatible_client_version` from
 [`gradle.properties`](../gradle.properties) and prints **Compatible client
