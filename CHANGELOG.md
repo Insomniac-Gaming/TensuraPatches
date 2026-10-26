@@ -2,6 +2,17 @@
 
 Release entries are compiled from `changes/` when a version is finalized.
 
+## [0.2.1]
+
+**Compatible client version:** 0.2.0
+
+### Fixed
+
+- Require normal Tensura skill unlocks to have enough base and effective maximum magicules, with a separate `mpSkillUnlockRequirementPercent` gamerule for the acquisition threshold.
+- Ask for player consent before automatic Tensura, Mysticism, and FoxAblaze skills consume a large share of permanent maximum magicules; add persistent `/skilloffers` commands and a configurable threshold.
+- Preserve ReRebirth-locked skills through Tensura skill, full character, and race resets, ReRebirth resets, explicit administrator race changes, and Reincarnation Magic. All five removal loops use the same reset-only guard; updated player-storage mirrors are restored afterward.
+- Route Tensura lock/unlock requests through ReRebirth, and use its synced eligibility and lock list in the updated Tensura skill GUI. Older 0.2.0 clients can still connect and use their existing ReRebirth lock controls.
+
 ## [0.2.0]
 
 ### Fixed
