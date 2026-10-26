@@ -69,7 +69,15 @@ and `--test-mod`; it does not require a Prism client. The real-client command
 case is `client --scenario rebirth_locks` with the full arguments above.
 The runner downloads exactly the
 MC Pilot v0.20.2 NeoForge 1.21.1 client JAR and checks its pinned SHA-256;
-`--pilot-jar` uses an already downloaded copy with the same hash. It is added
+`--pilot-jar` uses an already downloaded copy with the same original hash.
+After verification the *disposable copy* is patched to retain only the seven
+client mixins required for WebSocket command dispatch, input and GUI controls.
+The upstream JAR is not modified. All gameplay checks, real-client connection,
+and screenshot requirements remain strict. This compatibility filter was derived
+from isolated NeoForge 1.21.1 real-client tests: full upstream MC Pilot fails to
+join with a Moonlight/registry configuration-phase error, while the no-mixin,
+tick-only and seven-GUI-mixin variants join. Do not remove the filter or change
+MC Pilot versions without rerunning the full real-client tests. It is added
 only to the staged client. The player-test mod is added only to the staged
 server. MC Pilot's control socket remains on loopback inside the client
 container; the outer runner reaches it through `docker exec`.

@@ -144,6 +144,10 @@ def stage_client(prism_root: Path, instance_id: str, jar: Path, probe: Path, des
         "IgnoreJavaWizard": "true",
         "ApplicationTheme": "system",
         "IconTheme": "pe_colored",
+        # The Prism CLI can use global JVM memory preferences even when
+        # the staged instance requests an override. Set both consistently.
+        "MaxMemAlloc": "8192",
+        "MinMemAlloc": "512",
     }.items():
         set_config_value(launcher_config, key, value)
     staged_instance = destination / "instances" / instance_id

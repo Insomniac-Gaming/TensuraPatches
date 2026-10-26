@@ -117,6 +117,10 @@ class SmokeInputTests(unittest.TestCase):
             self.assertIn("IgnoreJavaWizard=true\n", launcher_config)
             self.assertIn("ApplicationTheme=system\n", launcher_config)
             self.assertIn("IconTheme=pe_colored\n", launcher_config)
+            self.assertIn("MaxMemAlloc=8192\n", launcher_config)
+            self.assertIn("MinMemAlloc=512\n", launcher_config)
+            self.assertIn("OverrideMemory=true\n", config)
+            self.assertIn("MaxMemAlloc=8192\n", config)
             self.assertEqual(
                 (staged / "minecraft/options.txt").read_text(),
                 "onboardAccessibility:false\n",

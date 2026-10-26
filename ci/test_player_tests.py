@@ -3,12 +3,41 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from zipfile import ZipFile
 
 from player_tests.harness import InfrastructureFailure, PlayerSession, TestFailure
-from player_tests.run import load_fixture, offline_uuid, stage_fixture, wait_join
+from player_tests.run import (PILOT_COMPAT_MIXINS, load_fixture, offline_uuid,
+                              print_failure_log_excerpt, restrict_pilot_mixins,
+                              stage_fixture, wait_join)
 
 
 class PlayerTestFrameworkTests(unittest.TestCase):
+    def test_pilot_filter_preserves_necessary_gui_mixins_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            jar = Path(temporary) / "pilot.jar"
+            original = {"required": False, "client": [
+                "MinecraftClientTickMixin", "KeyboardInvoker", "KeyBindingAccessor",
+                "MouseInvoker", "MinecraftClientFocusMixin", "HandledScreenAccessor",
+                "ConfirmScreenAccessor", "ResourcePackNetworkHandlerMixin",
+                "FramebufferRecordingMixin", "ChatHudMixin"
+            ]}
+            with ZipFile(jar, "w") as writer:
+                writer.writestr("mct.mixins.json", json.dumps(original))
+                writer.writestr("com/mct/Example.class", b"synthetic-class")
+            restrict_pilot_mixins(jar)
+            with ZipFile(jar) as result:
+                config = json.loads(result.read("mct.mixins.json"))
+                self.assertEqual(config["client"], list(PILOT_COMPAT_MIXINS))
+                self.assertEqual(result.read("com/mct/Example.class"), b"synthetic-class")
+
+    def test_pilot_filter_fails_closed_when_required_hook_missing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            jar = Path(temporary) / "pilot.jar"
+            with ZipFile(jar, "w") as writer:
+                writer.writestr("mct.mixins.json", json.dumps({"client": ["MinecraftClientTickMixin"]}))
+            with self.assertRaisesRegex(InfrastructureFailure, "mixin layout changed"):
+                restrict_pilot_mixins(jar)
+
     def test_offline_uuid_matches_minecraft_name_uuid(self):
         self.assertEqual(offline_uuid("Notch"), "b50ad385-829d-3141-a216-7e7d7539ba7f")
 
@@ -77,6 +106,19 @@ class PlayerTestFrameworkTests(unittest.TestCase):
                      "width": 20, "height": 20}]}):
                 with self.assertRaisesRegex(TestFailure, "Expected one visible widget"):
                     session.click_widget_any(("skill", "abilit"))
+
+    def test_failure_log_excerpt_preserves_recent_network_exception(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "client.log"
+            path.write_text("unrelated startup warning\n" * 100
+                            + "Network Protocol Error\n"
+                            + "Caused by: java.lang.UnsupportedOperationException\n")
+            with patch("builtins.print") as output:
+                print_failure_log_excerpt(path, limit=20)
+            rendered = "\n".join(str(call.args[0]) for call in output.call_args_list)
+            self.assertIn("UnsupportedOperationException", rendered)
+            self.assertIn("Network Protocol Error", rendered)
+            self.assertLessEqual(rendered.count("unrelated startup warning"), 12)
 
     def test_join_fails_fast_on_disconnect_screen(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -61,6 +61,26 @@ steps:
           --jar "$jar" \
           --probe "$1"
 
+  # This verifies ReRebirth/reset protection even if the disposable
+  # Minecraft client encounters an unrelated configuration-phase disconnect.
+  # Keep player-tests strict; a client failure still fails the pipeline.
+  - name: rebirth-gametest
+    image: python:3.12-alpine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - insomniac-ci-input:/ci-input:ro
+    commands:
+      - apk add --no-cache docker-cli
+      - |
+        set -eu
+        set -- build/libs/InsomniacServerPatches-*.jar
+        [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "Expected exactly one release JAR" >&2; exit 1; }
+        jar="$1"
+        set -- ci/player-test-mod/build/libs/InsomniacPlayerTests-*.jar
+        [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "Expected exactly one GameTest JAR" >&2; exit 1; }
+        python3 ci/player_tests/run.py rebirth-gametest --snapshot /ci-input/server \
+          --jar "$jar" --test-mod "$1" --timeout 600
+
   - name: player-tests
     image: python:3.12-alpine
     volumes:

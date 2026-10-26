@@ -14,6 +14,7 @@ import tempfile
 import time
 import urllib.request
 import uuid
+from zipfile import ZipFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from smoke import prepare_server_permissions, stage_client, stage_server, stop_container  # noqa: E402
@@ -21,6 +22,44 @@ from player_tests.harness import InfrastructureFailure, PlayerSession, TestFailu
 
 PILOT_URL = "https://github.com/kzheart/mc-pilot/releases/download/v0.20.2/mct-client-mod-neoforge-1.21.1.jar"
 PILOT_SHA256 = "cb41cad450a9ed9e77eee0b3da40c039ec2a4ad168243679c54921a38e743cbd"
+# The upstream 0.10.1 client conflicts with this NeoForge modpack when some
+# HUD/recording/network-observer mixins are enabled. Keep the command dispatcher
+# and actual keyboard/mouse/GUI accessors; never alter the gameplay assertions.
+# See ci/player_tests/README.md for controlled real-client isolation results.
+PILOT_COMPAT_MIXINS = (
+    "MinecraftClientTickMixin",
+    "KeyboardInvoker",
+    "KeyBindingAccessor",
+    "MouseInvoker",
+    "MinecraftClientFocusMixin",
+    "HandledScreenAccessor",
+    "ConfirmScreenAccessor",
+)
+
+
+def restrict_pilot_mixins(jar: Path):
+    """Patch ONLY a verified, disposable MC Pilot JAR, not the upstream download."""
+    output = jar.with_name(jar.name + ".filtered")
+    try:
+        with ZipFile(jar, "r") as source, ZipFile(output, "w") as result:
+            try:
+                config = json.loads(source.read("mct.mixins.json"))
+            except KeyError as exception:
+                raise InfrastructureFailure("MC Pilot mixin manifest missing") from exception
+            available = config.get("client")
+            if not isinstance(available, list) or not set(PILOT_COMPAT_MIXINS).issubset(available):
+                raise InfrastructureFailure("MC Pilot mixin layout changed; review compatibility filter")
+            config["client"] = [name for name in available if name in PILOT_COMPAT_MIXINS]
+            for entry in source.infolist():
+                contents = source.read(entry.filename)
+                if entry.filename == "mct.mixins.json":
+                    contents = json.dumps(config, indent=2).encode()
+                result.writestr(entry, contents)
+        output.replace(jar)
+    finally:
+        output.unlink(missing_ok=True)
+
+
 GAME_TEST_MARKERS = (
     "INSOMNIAC_GAMETEST_PASS full_reset_clears_void_spirit_contract",
     "INSOMNIAC_GAMETEST_PASS rebirth_locks_reported_skills",
@@ -40,6 +79,8 @@ def fetch_pilot(destination: Path, supplied: Path | None):
     digest = hashlib.sha256(destination.read_bytes()).hexdigest()
     if digest != PILOT_SHA256:
         raise InfrastructureFailure("MC Pilot NeoForge 1.21.1 JAR hash mismatch")
+    restrict_pilot_mixins(destination)
+    print("MC Pilot client mixins restricted to CI-required input/GUI hooks", flush=True)
     return destination
 
 
@@ -131,6 +172,32 @@ def wait_join(session: PlayerSession, timeout: int):
                     + (f": {details}" if details else ""))
         time.sleep(2)
     raise InfrastructureFailure("Real Minecraft client did not join the disposable server")
+
+
+def print_failure_log_excerpt(log_path: Path, limit: int = 60):
+    """Keep actionable client errors in Woodpecker even after cleanup."""
+    if not log_path.is_file():
+        return
+    lines = log_path.read_text(errors="replace").splitlines()
+    if not lines:
+        return
+    # A recent disconnect or exception is more useful than earlier startup
+    # warnings from the hundreds of mods in this pack.
+    markers = ("exception", "caused by", "network protocol error",
+               "failed to handle", "disconnected", "packet error", "lost connection")
+    relevant = [i for i, line in enumerate(lines)
+                if any(marker in line.lower() for marker in markers)]
+    if relevant:
+        last = relevant[-1]
+        start = max(0, last - 12)
+        excerpt = lines[start:min(len(lines), max(last + 15, start + limit))]
+    else:
+        excerpt = lines[-limit:]
+    print(f"--- Minecraft failure log ({log_path.name}; last relevant section) ---",
+          flush=True)
+    for line in excerpt[:limit]:
+        print(line[:500], flush=True)
+    print("--- End Minecraft failure log ---", flush=True)
 
 
 def execute(args):
@@ -237,6 +304,7 @@ def execute(args):
         except Exception:
             if session is not None:
                 session.collect_failure()
+                print_failure_log_excerpt(session.artifacts / "client.log")
             else:
                 (artifacts / "server.log").write_text(
                     command("docker", "logs", "--tail", "250", server, check=False).stdout)
