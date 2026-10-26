@@ -21,7 +21,10 @@ from player_tests.harness import InfrastructureFailure, PlayerSession, TestFailu
 
 PILOT_URL = "https://github.com/kzheart/mc-pilot/releases/download/v0.20.2/mct-client-mod-neoforge-1.21.1.jar"
 PILOT_SHA256 = "cb41cad450a9ed9e77eee0b3da40c039ec2a4ad168243679c54921a38e743cbd"
-GAME_TEST_MARKER = "INSOMNIAC_GAMETEST_PASS full_reset_clears_void_spirit_contract"
+GAME_TEST_MARKERS = (
+    "INSOMNIAC_GAMETEST_PASS full_reset_clears_void_spirit_contract",
+    "INSOMNIAC_GAMETEST_PASS rebirth_locks_reported_skills",
+)
 FIXTURE_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 PLAYER_NAME = re.compile(r"^[A-Za-z0-9_]{1,16}$")
 
@@ -157,6 +160,22 @@ def execute(args):
             command("docker", "start", server)
             wait_server(server, args.timeout)
 
+            if args.mode == "rebirth-gametest":
+                result = command("docker", "exec", server, "rcon-cli", "test", "run",
+                                 "rebirthlocksreportedskills", check=False)
+                if result.returncode or "No such test" in result.stdout:
+                    raise InfrastructureFailure(f"Rebirth GameTest was unavailable: {result.stdout[-1000:]}")
+                deadline = time.monotonic() + 90
+                while time.monotonic() < deadline:
+                    logs = command("docker", "logs", server, check=False).stdout
+                    if GAME_TEST_MARKERS[1] in logs:
+                        print("PASS: in-engine ReRebirth lock GameTest")
+                        return
+                    if "rebirthlocksreportedskills failed" in logs.lower():
+                        raise TestFailure("Rebirth lock GameTest failed; see server log")
+                    time.sleep(2)
+                raise TestFailure("Rebirth lock GameTest did not report success")
+
             pilot = fetch_pilot(temporary / "mct-client-mod-neoforge-1.21.1.jar", args.pilot_jar)
             staged_client_root = temporary / "prism"
             instance = stage_client(args.prism_root, args.instance_id, args.jar, args.probe, staged_client_root)
@@ -186,16 +205,18 @@ def execute(args):
                 deadline = time.monotonic() + 90
                 while time.monotonic() < deadline:
                     logs = command("docker", "logs", server, check=False).stdout
-                    if GAME_TEST_MARKER in logs:
-                        print("PASS: in-engine full-reset GameTest")
+                    if all(marker in logs for marker in GAME_TEST_MARKERS):
+                        print("PASS: in-engine player GameTests")
                         break
-                    if "fullresetclearsvoidspiritcontract failed" in logs.lower():
-                        raise TestFailure("Full-reset GameTest failed; see server log")
+                    if any(name in logs.lower() for name in (
+                            "fullresetclearsvoidspiritcontract failed",
+                            "rebirthlocksreportedskills failed")):
+                        raise TestFailure("Player GameTest failed; see server log")
                     time.sleep(2)
                 else:
                     if "INSOMNIAC_GAMETEST_START full_reset_clears_void_spirit_contract" not in logs:
                         raise InfrastructureFailure("GameTest was registered but its template/test method did not start")
-                    raise TestFailure("Full-reset GameTest did not report success")
+                    raise TestFailure("Player GameTests did not all report success")
             else:
                 scenario.run(session)
                 print(f"PASS: real-client scenario {args.scenario}")
@@ -214,7 +235,7 @@ def execute(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("gametest", "client", "all"))
+    parser.add_argument("mode", choices=("gametest", "client", "all", "rebirth-gametest"))
     parser.add_argument("--snapshot", type=Path, required=True)
     parser.add_argument("--world", type=Path)
     parser.add_argument("--jar", type=Path, required=True)
@@ -235,7 +256,7 @@ def main():
     parser.add_argument("--game-test-negative-control", action="store_true",
                         help="Invert the Void Spirit assertion to verify GameTest failure reporting")
     args = parser.parse_args()
-    if not all((args.prism_root, args.instance_id, args.profile, args.probe)):
+    if args.mode != "rebirth-gametest" and not all((args.prism_root, args.instance_id, args.profile, args.probe)):
         parser.error("all modes require --prism-root, --instance-id, --profile and --probe")
     try:
         if args.mode == "all":

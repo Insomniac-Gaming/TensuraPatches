@@ -15,6 +15,11 @@ does not contain either test mod.
   NeoForge disables automatic GameTest registration in production jars, so the
   disposable test mod registers its annotated tests, `/test` command, and test
   ticker there.
+  `rebirthLocksReportedSkills` seeds a disposable player at rebirth 3 with
+  Gluttony, Starved, and Raphael owned, then checks ReRebirth's lock methods,
+  the two-slot limit, unlocking, and the stored locks. It then uses Tensura's
+  skill reset path and checks that locked skills remain owned while an unlocked
+  skill is removed. It uses no copied player data.
 - `scenarios/*.py` are real-client cases. Each declares `NAME` and `FIXTURE`
   and implements `run(session)`. The shared `PlayerSession` provides MC Pilot
   actions, server and player commands, screen/widget observations, bounded
@@ -59,6 +64,9 @@ python3 ci/player_tests/run.py all \
 Use `gametest` in place of `all` to run only the Java test. It still launches a
 real test client because this pack rejects custom payloads sent to Minecraft's
 embedded mock player. Use `--world` for a disposable copy of a test world.
+For the ReRebirth case alone, run `rebirth-gametest` with `--snapshot`, `--jar`,
+and `--test-mod`; it does not require a Prism client. The real-client command
+case is `client --scenario rebirth_locks` with the full arguments above.
 The runner downloads exactly the
 MC Pilot v0.20.2 NeoForge 1.21.1 client JAR and checks its pinned SHA-256;
 `--pilot-jar` uses an already downloaded copy with the same hash. It is added

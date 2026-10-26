@@ -8,6 +8,7 @@
     "horizons.SovereignAwakeningMixin",
     "horizons.VoidSpiritResetMixin",
     "tensura.SkillUnlockCapacityMixin",
+    "tensura.RebirthSkillResetMixin",
     "tensura.AutomaticEpOfferMixin"
   ],
   "injectors": {
