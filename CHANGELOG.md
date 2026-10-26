@@ -2,6 +2,14 @@
 
 Release entries are compiled from `changes/` when a version is finalized.
 
+## [0.2.2]
+
+**Compatible client version:** 0.2.0
+
+### Fixed
+
+- Fix skill offer chat buttons and `/skilloffers accept` and `/skilloffers suppress` commands for namespaced skill IDs.
+
 ## [0.2.1]
 
 **Compatible client version:** 0.2.0

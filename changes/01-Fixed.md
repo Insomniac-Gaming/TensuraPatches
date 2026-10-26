@@ -1,1 +1,0 @@
-- Fix skill offer chat buttons and `/skilloffers accept` and `/skilloffers suppress` commands for namespaced skill IDs.
