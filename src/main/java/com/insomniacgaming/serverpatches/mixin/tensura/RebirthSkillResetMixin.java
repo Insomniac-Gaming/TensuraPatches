@@ -14,31 +14,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Skip Tensura's removal branch for skills in ReRebirth's lock list. */
 @Mixin(targets = "io.github.manasmods.tensura.item.misc.ResetScrollItem", remap = false)
 abstract class RebirthSkillResetMixin {
+    // Exactly the same removal event appears in all three Tensura scroll paths.
     @Coerce
     @WrapOperation(
-            method = "resetSkill(Lnet/minecraft/server/level/ServerPlayer;Z)V",
+            method = {
+                    "resetSkill(Lnet/minecraft/server/level/ServerPlayer;Z)V",
+                    "resetEverything(Lnet/minecraft/server/level/ServerPlayer;)V",
+                    "resetRace(Lnet/minecraft/server/level/ServerPlayer;)V"
+            },
             at = @At(value = "INVOKE", target = "Lio/github/manasmods/manascore/skill/api/SkillEvents$RemoveSkillEvent;removeSkill(Lio/github/manasmods/manascore/skill/api/ManasSkillInstance;Lnet/minecraft/world/entity/LivingEntity;Lio/github/manasmods/manascore/network/api/util/Changeable;)Ldev/architectury/event/EventResult;"),
-            remap = false, require = 1)
-    private static Object insomniacServerPatches$keepLockedSkill(
+            remap = false, require = 3)
+    private static Object insomniacServerPatches$protectResetSkill(
             @Coerce Object event, @Coerce Object instance, LivingEntity owner,
             @Coerce Object changeable, Operation<Object> original) {
-        if (owner instanceof ServerPlayer player && RebirthSkillResetGuard.isLocked(player, instance)) {
-            return RebirthSkillResetGuard.vetoRemoval();
-        }
-        return original.call(event, instance, owner, changeable);
-    }
-
-    // Full character resets use a separate removal loop from skill-only resets.
-    // Both loops must skip locked skills before onForgetSkill and iterator.remove.
-    @Coerce
-    @WrapOperation(
-            method = "resetEverything(Lnet/minecraft/server/level/ServerPlayer;)V",
-            at = @At(value = "INVOKE", target = "Lio/github/manasmods/manascore/skill/api/SkillEvents$RemoveSkillEvent;removeSkill(Lio/github/manasmods/manascore/skill/api/ManasSkillInstance;Lnet/minecraft/world/entity/LivingEntity;Lio/github/manasmods/manascore/network/api/util/Changeable;)Ldev/architectury/event/EventResult;"),
-            remap = false, require = 1)
-    private static Object insomniacServerPatches$keepLockedSkillOnFullReset(
-            @Coerce Object event, @Coerce Object instance, LivingEntity owner,
-            @Coerce Object changeable, Operation<Object> original) {
-        return insomniacServerPatches$keepLockedSkill(event, instance, owner, changeable, original);
+        return RebirthSkillResetGuard.removeUnlessLocked(event, instance, owner, changeable, original);
     }
 
     @Inject(method = "resetEverything(Lnet/minecraft/server/level/ServerPlayer;)V",
@@ -48,9 +37,17 @@ abstract class RebirthSkillResetMixin {
         RebirthSkillResetGuard.restoreAfterFullReset(player);
     }
 
+    @Inject(method = "resetRace(Lnet/minecraft/server/level/ServerPlayer;)V",
+            at = @At("TAIL"), remap = false, require = 1)
+    private static void insomniacServerPatches$syncRaceResetLocks(ServerPlayer player, CallbackInfo callback) {
+        // Like full resets, race resets replace Tensura's player storage.
+        RebirthSkillResetGuard.restoreAfterFullReset(player);
+    }
+
     @Inject(method = "resetSkill(Lnet/minecraft/server/level/ServerPlayer;Z)V", at = @At("TAIL"), remap = false)
     private static void insomniacServerPatches$syncLocks(ServerPlayer player, boolean initial,
                                                           CallbackInfo callback) {
-        RebirthSkillResetGuard.mirror(player);
+        // Skill resets replace the same Tensura player-data storage as full resets.
+        RebirthSkillResetGuard.restoreAfterFullReset(player);
     }
 }

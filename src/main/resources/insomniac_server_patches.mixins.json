@@ -9,6 +9,8 @@
     "horizons.VoidSpiritResetMixin",
     "tensura.SkillUnlockCapacityMixin",
     "tensura.RebirthSkillResetMixin",
+    "tensura.RebirthAdminRaceResetMixin",
+    "tensura.RebirthReincarnationMagicMixin",
     "tensura.RebirthLockPacketMixin",
     "tensura.AutomaticEpOfferMixin"
   ],

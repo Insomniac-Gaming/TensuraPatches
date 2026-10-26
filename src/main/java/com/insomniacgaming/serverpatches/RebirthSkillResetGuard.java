@@ -1,12 +1,27 @@
 package com.insomniacgaming.serverpatches;
 
 import java.util.List;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 /** Consult ReRebirth's authoritative locks before Tensura forgets a skill. */
 public final class RebirthSkillResetGuard {
     private RebirthSkillResetGuard() {}
+
+    /**
+     * Shared reset-only removal guard. The calling mixin is responsible for
+     * limiting this to an intentional reset, not normal evolution or fusion.
+     * The original event remains untouched for unlocked skills.
+     */
+    public static Object removeUnlessLocked(Object event, Object instance, LivingEntity owner,
+                                             Object changeable, Operation<Object> original) {
+        if (owner instanceof ServerPlayer player && isLocked(player, instance)) {
+            return vetoRemoval();
+        }
+        return original.call(event, instance, owner, changeable);
+    }
 
     public static boolean isLocked(ServerPlayer player, Object instance) {
         try {

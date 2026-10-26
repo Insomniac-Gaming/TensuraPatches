@@ -121,6 +121,11 @@ public final class PlayerStateGameTests {
             resetSkill.invoke(null, player);
             helper.assertTrue(stored.invoke(null, player).equals(java.util.List.of(gluttony.toString(), starved.toString())),
                     "Skill reset changed the persisted lock list");
+            Object dataAfterSkillReset = Class.forName("io.github.manasmods.tensura.storage.TensuraStorages")
+                    .getMethod("getPlayerDataFrom", net.minecraft.world.entity.LivingEntity.class).invoke(null, player);
+            int skillResetSlots = (int) dataAfterSkillReset.getClass().getMethod("getBonusSkillLock").invoke(dataAfterSkillReset);
+            helper.assertTrue(skillResetSlots >= 2,
+                    "Skill reset did not restore ReRebirth's lock-slot capacity");
             Object skillStorage = Class.forName("io.github.manasmods.manascore.skill.api.SkillAPI")
                     .getMethod("getSkillsFrom", net.minecraft.world.entity.LivingEntity.class).invoke(null, player);
             Method owned = skillStorage.getClass().getMethod("getSkill", ResourceLocation.class);
@@ -196,6 +201,57 @@ public final class PlayerStateGameTests {
                     "ReRebirth client sync reports the wrong lock-slot capacity");
             helper.assertTrue(synced.getList("locked", 8).size() == 2,
                     "ReRebirth client sync doesn't contain the latest two locks");
+
+            // Race-reset scroll: tagged elemental magic should be forgotten,
+            // while the two ReRebirth locks and the mirrored GUI state remain.
+            ResourceLocation fire = ResourceLocation.parse("tensura:fire");
+            Object fireSkill = skillRegistry.getClass().getMethod("get", ResourceLocation.class)
+                    .invoke(skillRegistry, fire);
+            helper.assertTrue(fireSkill != null, "Tagged reset-with-race Fire skill is absent");
+            Method updateSkill = skillStorage.getClass().getMethod("updateSkill",
+                    Class.forName("io.github.manasmods.manascore.skill.api.ManasSkillInstance"), boolean.class);
+            updateSkill.invoke(skillStorage, fireSkill.getClass().getMethod("createDefaultInstance").invoke(fireSkill), false);
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, fire)).isPresent(),
+                    "Fire skill was not added for the race-reset test");
+            Method resetRace = Class.forName("io.github.manasmods.tensura.item.misc.ResetScrollItem")
+                    .getMethod("resetRace", ServerPlayer.class);
+            resetRace.invoke(null, player);
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, fire)).isEmpty(),
+                    "Race reset retained unlocked, race-tagged Fire");
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, gluttony)).isPresent()
+                            && ((java.util.Optional<?>) owned.invoke(skillStorage, raphael)).isPresent(),
+                    "Race reset lost a ReRebirth-locked skill");
+            helper.assertTrue(stored.invoke(null, player).equals(java.util.List.of(gluttony.toString(), raphael.toString())),
+                    "Race reset modified ReRebirth's persisted locks");
+
+            // The admin command with an explicit race has a different loop.
+            // Restore a race after the preceding reset so the loop is exercised.
+            Object currentRaceStorage = Class.forName("io.github.manasmods.manascore.race.api.RaceAPI")
+                    .getMethod("getRaceFrom", net.minecraft.world.entity.LivingEntity.class).invoke(null, player);
+            var currentRaceField = currentRaceStorage.getClass().getDeclaredField("raceInstance");
+            currentRaceField.setAccessible(true);
+            currentRaceField.set(currentRaceStorage, human.getClass().getMethod("createDefaultInstance").invoke(human));
+            updateSkill.invoke(skillStorage, fireSkill.getClass().getMethod("createDefaultInstance").invoke(fireSkill), false);
+            Method adminReset = Class.forName("io.github.manasmods.tensura.command.edit.ResetCommand")
+                    .getDeclaredMethod("resetRace", net.minecraft.commands.CommandSourceStack.class,
+                            java.util.Collection.class,
+                            Class.forName("io.github.manasmods.manascore.race.api.ManasRace"));
+            adminReset.setAccessible(true);
+            adminReset.invoke(null, player.createCommandSourceStack(), java.util.List.of(player), human);
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, fire)).isEmpty(),
+                    "Admin race reset retained unlocked, race-tagged Fire");
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, gluttony)).isPresent()
+                            && ((java.util.Optional<?>) owned.invoke(skillStorage, raphael)).isPresent(),
+                    "Admin race reset removed a locked skill");
+            helper.assertTrue(stored.invoke(null, player).equals(java.util.List.of(gluttony.toString(), raphael.toString())),
+                    "Admin race reset changed ReRebirth's stored locks");
+            Object playerDataAfterRaceReset = Class.forName("io.github.manasmods.tensura.storage.TensuraStorages")
+                    .getMethod("getPlayerDataFrom", net.minecraft.world.entity.LivingEntity.class).invoke(null, player);
+            @SuppressWarnings("unchecked")
+            java.util.List<ResourceLocation> guiLocks = (java.util.List<ResourceLocation>)
+                    playerDataAfterRaceReset.getClass().getMethod("getLockedSkills").invoke(playerDataAfterRaceReset);
+            helper.assertTrue(guiLocks.size() == 2 && guiLocks.contains(gluttony) && guiLocks.contains(raphael),
+                    "Admin race reset did not restore Tensura's mirrored lock list");
 
             helper.succeed();
             LOGGER.info("INSOMNIAC_GAMETEST_PASS rebirth_locks_reported_skills");
