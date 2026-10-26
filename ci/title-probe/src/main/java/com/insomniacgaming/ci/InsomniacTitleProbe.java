@@ -37,6 +37,15 @@ public final class InsomniacTitleProbe {
         Minecraft minecraft = Minecraft.getInstance();
         if (!reported && minecraft.screen instanceof TitleScreen) {
             reported = true;
+            // Fail the client smoke test on broken AbilitySelectionScreen mixins,
+            // even when opening a world is blocked by an unrelated mod/network bug.
+            try {
+                Class.forName("io.github.manasmods.tensura.client.screen.AbilitySelectionScreen",
+                        false, Thread.currentThread().getContextClassLoader());
+                LOGGER.info("INSOMNIAC_CI_ABILITY_MIXIN_READY");
+            } catch (ClassNotFoundException | LinkageError problem) {
+                throw new IllegalStateException("Tensura ability screen failed class loading", problem);
+            }
             LOGGER.info("INSOMNIAC_CI_TITLE_READY");
         }
         if (++ticks % 5 == 0) writeScreenSnapshot(minecraft);

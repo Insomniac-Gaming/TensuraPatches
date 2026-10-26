@@ -87,6 +87,11 @@ def stage_server(snapshot: Path, jar: Path, destination: Path, world: Path | Non
         source = snapshot / name
         if source.exists():
             safe_copy(source, destination / name)
+    # Active Chunky tasks belong to the live server, not a disposable smoke world.
+    # Keep Chunky's settings, but don't resume production pregeneration in CI.
+    chunky_tasks = destination / "config" / "chunky" / "tasks"
+    if chunky_tasks.is_dir():
+        shutil.rmtree(chunky_tasks)
     for previous in (destination / "mods").glob("InsomniacServerPatches-*.jar"):
         previous.unlink()
     release = destination / "mods" / jar.name
@@ -262,6 +267,11 @@ def client_smoke(args):
                 found = run("docker", "exec", name, "grep", "-Fq", READY_MARKER, log_path,
                             check=False, capture=True)
                 if found.returncode == 0:
+                    ability = run("docker", "exec", name, "grep", "-Fq",
+                                  "INSOMNIAC_CI_ABILITY_MIXIN_READY", log_path,
+                                  check=False, capture=True)
+                    if ability.returncode != 0:
+                        raise RuntimeError("Client reached title but ability screen mixin check was absent")
                     if slimethrone_installed(staged_instance / "minecraft" / "mods"):
                         active = run("docker", "exec", name, "grep", "-Fq",
                                      "SlimeThrone lock/reset mixins disabled (2.1.2.1)",

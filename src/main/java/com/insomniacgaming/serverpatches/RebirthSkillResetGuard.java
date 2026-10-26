@@ -33,6 +33,18 @@ public final class RebirthSkillResetGuard {
         }
     }
 
+    public static void restoreAfterFullReset(ServerPlayer player) {
+        try {
+            Class.forName("com.trrebirth.prestige.PrestigeManager")
+                    .getMethod("syncLockSlots", ServerPlayer.class).invoke(null, player);
+        } catch (ClassNotFoundException absent) {
+            return; // ReRebirth is optional outside this pack.
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Could not restore ReRebirth lock slots", exception);
+        }
+        mirror(player);
+    }
+
     public static Object vetoRemoval() {
         try {
             return Class.forName("dev.architectury.event.EventResult")

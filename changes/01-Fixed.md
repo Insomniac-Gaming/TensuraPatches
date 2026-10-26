@@ -1,3 +1,4 @@
 - Require normal Tensura skill unlocks to have enough base and effective maximum magicules, with a separate `mpSkillUnlockRequirementPercent` gamerule for the acquisition threshold.
 - Ask for player consent before automatic Tensura, Mysticism, and FoxAblaze skills consume a large share of permanent maximum magicules; add persistent `/skilloffers` commands and a configurable threshold.
-- Keep skills locked through ReRebirth when a Tensura skill reset scroll is used.
+- Preserve ReRebirth-locked skills through Tensura skill resets and full character resets, including ReRebirth resets configured to reset everything.
+- Route Tensura lock/unlock requests through ReRebirth, and use its synced eligibility and lock list in the updated Tensura skill GUI. Older 0.2.0 clients can still connect and use their existing ReRebirth lock controls.

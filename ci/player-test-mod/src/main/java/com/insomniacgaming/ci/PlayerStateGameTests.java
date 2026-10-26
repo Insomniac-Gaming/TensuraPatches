@@ -148,6 +148,55 @@ public final class PlayerStateGameTests {
                     "Skill reset removed locked Raphael");
             helper.assertTrue(stored.invoke(null, player).equals(java.util.List.of(gluttony.toString(), raphael.toString())),
                     "Second skill reset changed the persisted lock list");
+            // Character-reset scrolls and ReRebirth's "everything" reset take
+            // resetEverything, not resetSkill. This must preserve locked Raphael.
+            Object registeredStarved = skillRegistry.getClass().getMethod("get", ResourceLocation.class)
+                    .invoke(skillRegistry, starved);
+            Object starvedInstance = registeredStarved.getClass().getMethod("createDefaultInstance")
+                    .invoke(registeredStarved);
+            skillStorage.getClass().getMethod("updateSkill",
+                            Class.forName("io.github.manasmods.manascore.skill.api.ManasSkillInstance"), boolean.class)
+                    .invoke(skillStorage, starvedInstance, false);
+            Method resetEverything = Class.forName("io.github.manasmods.tensura.item.misc.ResetScrollItem")
+                    .getMethod("resetEverything", ServerPlayer.class);
+            resetEverything.invoke(null, player);
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, gluttony)).isPresent(),
+                    "Character reset removed locked Gluttony");
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, raphael)).isPresent(),
+                    "Character reset removed locked Raphael");
+            helper.assertTrue(((java.util.Optional<?>) owned.invoke(skillStorage, starved)).isEmpty(),
+                    "Character reset retained unlocked Starved");
+            helper.assertTrue(stored.invoke(null, player).equals(java.util.List.of(gluttony.toString(), raphael.toString())),
+                    "Character reset changed ReRebirth's persisted locks");
+            // Tensura's *existing* lock packet must toggle the ReRebirth store.
+            // Older 0.2.0 clients still send this packet even without the GUI mixin.
+            Class<?> packetClass = Class.forName(
+                    "io.github.manasmods.tensura.network.c2s.RequestAbilityModeChangePacket");
+            Method packetFactory = packetClass.getMethod("lockAbilityPacket", ResourceLocation.class);
+            Method packetHandler = packetClass.getMethod("lockAbility",
+                    net.minecraft.world.entity.player.Player.class);
+            Object raphaelPacket = packetFactory.invoke(null, raphael);
+            packetHandler.invoke(raphaelPacket, player);
+            helper.assertTrue(stored.invoke(null, player).equals(java.util.List.of(gluttony.toString())),
+                    "Tensura unlock packet did not update ReRebirth");
+            packetHandler.invoke(raphaelPacket, player);
+            helper.assertTrue(stored.invoke(null, player).equals(java.util.List.of(gluttony.toString(), raphael.toString())),
+                    "Tensura lock packet did not update ReRebirth");
+            // Tensura's own client lock list must also mirror authoritative ReRebirth.
+            Object tensuraData = Class.forName("io.github.manasmods.tensura.storage.TensuraStorages")
+                    .getMethod("getPlayerDataFrom", net.minecraft.world.entity.LivingEntity.class).invoke(null, player);
+            @SuppressWarnings("unchecked")
+            java.util.List<ResourceLocation> mirrored = (java.util.List<ResourceLocation>) tensuraData
+                    .getClass().getMethod("getLockedSkills").invoke(tensuraData);
+            helper.assertTrue(mirrored.contains(gluttony) && mirrored.contains(raphael) && mirrored.size() == 2,
+                    "Tensura lock storage diverged from ReRebirth after clicking the padlock");
+            net.minecraft.nbt.CompoundTag synced = (net.minecraft.nbt.CompoundTag) manager
+                    .getMethod("buildSyncTag", ServerPlayer.class).invoke(null, player);
+            helper.assertTrue(synced.getInt("lockSlots") == 2,
+                    "ReRebirth client sync reports the wrong lock-slot capacity");
+            helper.assertTrue(synced.getList("locked", 8).size() == 2,
+                    "ReRebirth client sync doesn't contain the latest two locks");
+
             helper.succeed();
             LOGGER.info("INSOMNIAC_GAMETEST_PASS rebirth_locks_reported_skills");
         } catch (ReflectiveOperationException exception) {

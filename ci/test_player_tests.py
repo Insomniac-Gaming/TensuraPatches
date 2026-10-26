@@ -78,6 +78,21 @@ class PlayerTestFrameworkTests(unittest.TestCase):
                 with self.assertRaisesRegex(TestFailure, "Expected one visible widget"):
                     session.click_widget_any(("skill", "abilit"))
 
+    def test_join_fails_fast_on_disconnect_screen(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            session = PlayerSession("server", "client", "/minecraft", Path(temporary))
+            disconnected = {
+                "playerPresent": False,
+                "screen": "net.minecraft.client.gui.screens.DisconnectedScreen",
+                "widgets": [{"text": "Network Protocol Error"}],
+            }
+            with patch.object(session, "screen", return_value=disconnected), \
+                    patch("player_tests.run.time.sleep") as sleep:
+                with self.assertRaisesRegex(
+                        InfrastructureFailure, "Network Protocol Error"):
+                    wait_join(session, 1200)
+                sleep.assert_not_called()
+
     def test_join_waits_past_loading_terrain(self):
         with tempfile.TemporaryDirectory() as temporary:
             session = PlayerSession("server", "client", "/minecraft", Path(temporary))

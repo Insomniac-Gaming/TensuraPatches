@@ -9,7 +9,11 @@
     "horizons.VoidSpiritResetMixin",
     "tensura.SkillUnlockCapacityMixin",
     "tensura.RebirthSkillResetMixin",
+    "tensura.RebirthLockPacketMixin",
     "tensura.AutomaticEpOfferMixin"
+  ],
+  "client": [
+    "tensura.client.RebirthAbilityScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

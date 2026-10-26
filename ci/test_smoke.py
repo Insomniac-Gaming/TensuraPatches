@@ -50,6 +50,27 @@ class SmokeInputTests(unittest.TestCase):
             stage_server(root / "snapshot", jar, root / "stage", None)
             self.assertEqual((root / "stage/mods" / jar.name).read_bytes(), b"addon")
 
+    def test_server_staging_drops_chunky_pregeneration_tasks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mods = root / "snapshot/mods"
+            mods.mkdir(parents=True)
+            (mods / "Tensura_Horizons-0.31.jar").write_bytes(b"horizons")
+            chunky = root / "snapshot/config/chunky"
+            (chunky / "tasks/minecraft").mkdir(parents=True)
+            task = chunky / "tasks/minecraft/overworld.properties"
+            task.write_text("active-task")
+            (chunky / "config.json").write_text('{"world": "overworld"}')
+            jar = root / "InsomniacServerPatches-1.0.0.jar"
+            jar.write_bytes(b"addon")
+
+            stage = root / "stage"
+            stage_server(root / "snapshot", jar, stage, None)
+            self.assertFalse((stage / "config/chunky/tasks").exists())
+            self.assertEqual((stage / "config/chunky/config.json").read_text(),
+                             '{"world": "overworld"}')
+            self.assertEqual(task.read_text(), "active-task")
+
     def test_server_staging_is_writable_without_changing_snapshot(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

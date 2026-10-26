@@ -115,17 +115,26 @@ def wait_join(session: PlayerSession, timeout: int):
     while time.monotonic() < deadline:
         try:
             snapshot = session.screen()
-            if (snapshot.get("playerPresent") and
-                    (snapshot.get("screen") is None or
-                     snapshot["screen"].endswith("GachaStartScreen"))):
-                return session.connected_player()
         except InfrastructureFailure:
             pass
+        else:
+            screen = snapshot.get("screen") or ""
+            if (snapshot.get("playerPresent") and
+                    (not screen or screen.endswith("GachaStartScreen"))):
+                return session.connected_player()
+            if screen.endswith("DisconnectedScreen"):
+                widgets = snapshot.get("widgets") or []
+                details = next((str(widget.get("text")) for widget in widgets
+                                if "Error" in str(widget.get("text", ""))), "")
+                raise InfrastructureFailure(
+                    "Minecraft client disconnected before joining the test server"
+                    + (f": {details}" if details else ""))
         time.sleep(2)
     raise InfrastructureFailure("Real Minecraft client did not join the disposable server")
 
 
 def execute(args):
+    print(f"Starting disposable {args.mode} run", flush=True)
     token = secrets.token_hex(5)
     network = f"insomniac-player-tests-{token}"
     server = f"insomniac-player-server-{token}"
@@ -158,7 +167,9 @@ def execute(args):
                     args.server_image)
             command("docker", "cp", "-a", str(staged_server) + "/.", server + ":/data/")
             command("docker", "start", server)
+            print("Waiting for disposable server RCON...", flush=True)
             wait_server(server, args.timeout)
+            print("Disposable server ready", flush=True)
 
             if args.mode == "rebirth-gametest":
                 result = command("docker", "exec", server, "rcon-cli", "test", "run",
@@ -187,11 +198,14 @@ def execute(args):
                     "-e", "MCT_CLIENT_WS_PORT=25560", args.client_image)
             command("docker", "cp", str(staged_client_root) + "/.", client + ":/prism/")
             command("docker", "start", client)
+            print("Waiting for Minecraft client title screen...", flush=True)
             minecraft_dir = f"/prism/instances/{args.instance_id}/minecraft"
             session = PlayerSession(server, client, minecraft_dir, artifacts / args.scenario)
             wait_client(session, args.timeout)
+            print("Client title screen ready; joining disposable server...", flush=True)
             session.rpc("client.reconnect", {"address": "test-server:25565"})
             player = wait_join(session, args.timeout)
+            print("Client joined disposable server", flush=True)
             if args.player_name and player != args.player_name:
                 raise InfrastructureFailure("Joined player does not match fixture --player-name")
             if fixture is not None:
