@@ -1,1 +1,2 @@
 - Require normal Tensura skill unlocks to have enough base and effective maximum magicules, with a separate `mpSkillUnlockRequirementPercent` gamerule for the acquisition threshold.
+- Ask for player consent before automatic Tensura, Mysticism, and FoxAblaze skills consume a large share of permanent maximum magicules; add persistent `/skilloffers` commands and a configurable threshold.

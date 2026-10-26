@@ -1,6 +1,7 @@
 package com.insomniacgaming.serverpatches.mixin.horizons;
 
 import net.minecraft.nbt.CompoundTag;
+import com.insomniacgaming.serverpatches.SkillOfferGate;
 import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,6 +17,7 @@ abstract class VoidSpiritResetMixin {
             remap = false,
             require = 1)
     private static void insomniacServerPatches$clearVoidSpirit(ServerPlayer player, CallbackInfo callback) {
+        SkillOfferGate.clear(player);
         CompoundTag persistentData = player.getPersistentData();
         if (persistentData.contains("PlayerPersisted", 10)) {
             persistentData.getCompound("PlayerPersisted").remove("TensuraHorizonsVoidSpirit");

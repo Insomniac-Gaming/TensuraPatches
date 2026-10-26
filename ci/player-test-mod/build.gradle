@@ -1,0 +1,17 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+}
+
+version = '1.0.0'
+group = 'com.insomniacgaming.ci'
+
+base { archivesName = 'InsomniacPlayerTests' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = '21.1.262'
+    mods {
+        insomniac_player_tests { sourceSet(sourceSets.main) }
+    }
+}

@@ -27,6 +27,29 @@ This hook is pinned to Tensura 2.0.1.3's unlock handler. Check it again before
 updating Tensura. A local build verifies packaging, but an in-game purchase
 test is needed before server deployment.
 
+### Automatic costly skill offers
+
+`/gamerule mpAutoSkillOfferThresholdPercent` defaults to `25`. An automatic
+unlock pauses when its permanent **base maximum** magicule charge is strictly
+above that percentage of the player's base maximum before payment. Tensura EP
+unlocks use the charge after `mpSkillCost`; FoxAblaze's custom acquisitions use
+their configured permanent charge. Current-magicule-only costs do not prompt.
+
+The chat offer has **Let it form** and **Suppress** buttons. `/skilloffers`
+lists outstanding offers; `/skilloffers accept <skill-id>` and
+`/skilloffers suppress <skill-id>` are command fallbacks. Suppression hides
+repeat prompts while keeping the offer available. Offers persist across logout
+and clear on Tensura's full reset, including the configured rebirth path.
+Acceptance checks eligibility and capacity again and uses the original grant
+path. An increased cost percentage requires a second acceptance.
+
+Covered paths are Tensura's automatic EP scan (including add-on skills),
+Mysticism 2.2.1's separate EP scan, and FoxAblaze 1.0.6.4's automatic
+Veldora, Hell Sniper, Mammon, and Velgrynd acquisitions. Player-selected
+evolutions, items, gacha, and current-magicule-only grants remain immediate.
+These hooks are pinned to the inspected JAR versions. In-game testing on a
+disposable world is required before putting this build on a live server.
+
 ### Tensura Horizons 0.31 (original patch)
 
 Disables the automatic Sovereign Vessel acquisition and True Sovereign
@@ -74,14 +97,21 @@ functional testing of locked skills through a reset.
 
 ### Installation
 
-Put `InsomniacServerPatches-<version>.jar` in **both** the dedicated server and
-client modpacks, then restart. The client copy is required to remove the
-obsolete SlimeThrone screens and buttons. Leave the original mods installed:
+Put the server release in the dedicated server modpack. Clients need the
+version shown as **Compatible client version** in that release's notes; the
+0.2.0 client supplies the SlimeThrone screen and button cleanup. Server-only
+updates can retain that client version when they use existing chat and command
+behavior. Test a client login and the affected interaction before rollout.
+Leave the original mods installed:
 Tensura Horizons 0.31, and (if used) SlimeThroneExtras 2.1.2.1.
 
 The SlimeThrone dependency is optional so the Horizons-only patch still works
 in environments without SlimeThrone. With SlimeThrone present, only 2.1.2.1 is
 accepted.
+
+The pending 0.2.1 release targets client 0.2.0. That combination has not yet
+been verified by a client login; the disposable server startup check alone does
+not establish multiplayer compatibility.
 
 ### Verification
 
@@ -108,7 +138,7 @@ accepted.
 Build with Java 21: `./gradlew clean build`. The published JAR is under
 `build/libs/`; upstream mods and their assets are **not** bundled.
 
-The Woodpecker startup checks cover a disposable dedicated server through
-RCON and client title screen, not actual player login or reset actions.
-See [CI setup](ci/README.md) for details. The CI-only title probe is not part of
-the published mod JAR.
+Woodpecker keeps the disposable server startup and client title-screen checks,
+then runs a separate in-engine GameTest and real-client player scenario. See
+[CI setup](ci/README.md) for details. The CI-only test mods are not part of the
+published mod JAR.

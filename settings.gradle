@@ -13,3 +13,5 @@ plugins {
 rootProject.name = 'InsomniacServerPatches'
 include 'title-probe'
 project(':title-probe').projectDir = file('ci/title-probe')
+include 'player-test-mod'
+project(':player-test-mod').projectDir = file('ci/player-test-mod')

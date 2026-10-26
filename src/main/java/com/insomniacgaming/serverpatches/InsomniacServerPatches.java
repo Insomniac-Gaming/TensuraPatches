@@ -2,6 +2,7 @@ package com.insomniacgaming.serverpatches;
 
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.common.NeoForge;
 import net.minecraft.world.level.GameRules;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
@@ -12,9 +13,13 @@ public final class InsomniacServerPatches {
     public static final GameRules.Key<GameRules.IntegerValue> MP_SKILL_UNLOCK_REQUIREMENT_PERCENT =
             GameRules.register("mpSkillUnlockRequirementPercent", GameRules.Category.PLAYER,
                     GameRules.IntegerValue.create(100));
+    public static final GameRules.Key<GameRules.IntegerValue> MP_AUTO_SKILL_OFFER_THRESHOLD_PERCENT =
+            GameRules.register("mpAutoSkillOfferThresholdPercent", GameRules.Category.PLAYER,
+                    GameRules.IntegerValue.create(25));
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public InsomniacServerPatches() {
+        NeoForge.EVENT_BUS.addListener(SkillOfferGate::registerCommands);
         // NeoForge may only log an early mixin selection error and continue.
         // Refuse to start if SlimeThrone was present but its unsafe overrides remain.
         if (ModList.get().isLoaded("stextras")) {

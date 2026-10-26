@@ -2,7 +2,7 @@
 
 Woodpecker runs the tests in [`.woodpecker/tests.yml`](../.woodpecker/tests.yml)
 for `main` pushes, approved pull requests targeting `main`, and manual runs on
-`main`. It builds the release mod and CI-only title probe, runs the Python
+`main`. It builds the release mod and CI-only test mods, runs the Python
 input and release-gate tests, starts a disposable Minecraft server, and
 launches a disposable Prism client under Xvfb. The server must reach RCON and
 log the patch load marker; the client must log `INSOMNIAC_CI_TITLE_READY`.
@@ -10,9 +10,10 @@ When SlimeThroneExtras is present, both checks additionally require a log
 marker confirming that the compatibility mixin filter actually activated.
 The server check also confirms Lootr processor injection and inspects the
 `/stextras` help tree for removed command branches and retained tools.
-Containers are removed after each check and no Minecraft port is published.
-These are startup checks, not player-join, gameplay, or production-bootstrap
-tests.
+The additional player-test step runs a GameTest and joins a real client to a
+disposable server for UI and menu assertions. Containers are removed after
+each check and no Minecraft port is published. The startup steps remain
+startup checks; no check uses the production server.
 
 [The GitHub Actions release workflow](../.github/workflows/build.yml) runs
 only for `v*` tags. Editing `mod_version` or adding change fragments does not
@@ -25,6 +26,16 @@ release. The workflow builds the JAR, compiles pending `changes/*.md` into
 the GitHub Release using the compiled notes. A rerun can reuse that generated
 commit. Repository rules must allow `github-actions[bot]` to push it. No
 live-server installation or CurseForge upload is configured.
+
+The release compiler reads `compatible_client_version` from
+[`gradle.properties`](../gradle.properties) and prints **Compatible client
+version: X.Y.Z** in both the changelog entry and GitHub release notes. Review
+this value for every release. Keep it for server-only behavior that existing
+clients can use; raise it when a client mixin, screen, asset, registration, or
+network change requires a new client build. A server startup check does not
+prove that an older client can log in and use the changed behavior. See
+[`AGENTS.md`](../AGENTS.md) for the maintenance rule. A manual CurseForge
+description should copy the same compatibility line from the generated notes.
 
 ## Configure Woodpecker (repository owner)
 
@@ -62,7 +73,7 @@ These settings and inputs are not created by the repository changes:
    the host input directory contains private account data. Do not place that
    file or the server snapshot in Git.
 5. Prepare the host input directory and named volume below, then trigger a manual run on
-   `main`. Confirm all four steps pass. A manual status does **not** replace
+   `main`. Confirm all five steps pass. A manual status does **not** replace
    the `main` push status required for a release; push a commit and verify
    GitHub shows `ci/woodpecker/push/tests` as successful for its SHA.
 
@@ -130,8 +141,16 @@ plus disk for snapshot copies and the Prism image.
 
 ## Local checks
 
+The reusable in-engine player suite is documented in
+[`player_tests/README.md`](player_tests/README.md). It adds a CI-only NeoForge
+GameTest mod, named player fixtures, Python real-client scenarios, and a
+hash-pinned MC Pilot client mod. Its Woodpecker step is an additional gate;
+it uses disposable server/client copies and writes failure evidence under
+`ci-artifacts/player-tests/`. Run it against the private CI modpack locally
+before relying on its first Woodpecker result.
+
 ```bash
-./gradlew clean build :title-probe:build --no-daemon
+./gradlew clean build :title-probe:build :player-test-mod:build --no-daemon
 python3 -m unittest discover -s ci -p 'test_*.py'
 version="$(sed -n 's/^mod_version=//p' gradle.properties)"
 python3 ci/smoke.py server --snapshot /path/to/server-copy \

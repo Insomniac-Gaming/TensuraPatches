@@ -17,6 +17,14 @@ Protects skill unlock capacity, restores reset and locking, and hides legacy con
 config="insomniac_server_patches.mixins.json"
 
 [[mixins]]
+config="insomniac_mysticism.mixins.json"
+requiredMods=["mysticism"]
+
+[[mixins]]
+config="insomniac_foxablaze.mixins.json"
+requiredMods=["foxablazeultimate"]
+
+[[mixins]]
 config="insomniac_slimethrone.mixins.json"
 requiredMods=["stextras"]
 
@@ -53,5 +61,19 @@ side="BOTH"
 modId="stextras"
 type="optional"
 versionRange="[2.1.2.1]"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.insomniac_server_patches]]
+modId="mysticism"
+type="optional"
+versionRange="[2.2.1,2.2.2)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.insomniac_server_patches]]
+modId="foxablazeultimate"
+type="optional"
+versionRange="[1.0.6.4,1.0.6.5)"
 ordering="AFTER"
 side="BOTH"

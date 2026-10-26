@@ -9,6 +9,7 @@ VERSION = re.compile(r"\d+\.\d+\.\d+\Z")
 HEADING = re.compile(r"^## \[(\d+\.\d+\.\d+)\](?: - [^\n]+)?[ \t]*$", re.MULTILINE)
 FRAGMENT = re.compile(r"\d{2}-(.+)\.md\Z")
 PROPERTY = re.compile(r"^mod_version=(\S+)$", re.MULTILINE)
+CLIENT_PROPERTY = re.compile(r"^compatible_client_version=(\S+)$", re.MULTILINE)
 
 
 def parse_version(properties: str) -> str:
@@ -20,6 +21,14 @@ def parse_version(properties: str) -> str:
 
 def read_version(root: Path) -> str:
     return parse_version((root / "gradle.properties").read_text(encoding="utf-8"))
+
+
+def read_client_version(root: Path) -> str:
+    properties = (root / "gradle.properties").read_text(encoding="utf-8")
+    matches = CLIENT_PROPERTY.findall(properties)
+    if len(matches) != 1 or not VERSION.fullmatch(matches[0]):
+        raise ValueError("gradle.properties must contain one valid compatible_client_version=X.Y.Z")
+    return matches[0]
 
 
 def compile_fragments(root: Path, version: str) -> str:
@@ -38,7 +47,9 @@ def compile_fragments(root: Path, version: str) -> str:
         if not body:
             raise ValueError(f"Empty change fragment: {path.name}")
         sections.append(f"### {match.group(1)}\n\n{body}")
-    return f"## [{version}]\n\n" + "\n\n".join(sections) + "\n"
+    client_version = read_client_version(root)
+    return (f"## [{version}]\n\n**Compatible client version:** {client_version}\n\n"
+            + "\n\n".join(sections) + "\n")
 
 
 def compile_release(root: Path, version: str) -> str:

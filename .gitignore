@@ -6,6 +6,7 @@ __pycache__/
 *.pyc
 # Private smoke inputs belong outside this repository.
 ci-input/
+ci-artifacts/
 prism/
 world.zip
 accounts.json

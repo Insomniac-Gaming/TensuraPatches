@@ -10,7 +10,7 @@ steps:
   - name: build-artifacts
     image: eclipse-temurin:21-jdk
     commands:
-      - ./gradlew clean build :title-probe:build --no-daemon
+      - ./gradlew clean build :title-probe:build :player-test-mod:build --no-daemon
 
   - name: unit-tests
     image: python:3.12-alpine
@@ -60,3 +60,31 @@ steps:
           --profile "$PRISM_PROFILE" \
           --jar "$jar" \
           --probe "$1"
+
+  - name: player-tests
+    image: python:3.12-alpine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - insomniac-ci-input:/ci-input:ro
+    environment:
+      PRISM_PROFILE:
+        from_secret: prism_profile
+    commands:
+      - apk add --no-cache docker-cli
+      - python3 -m pip install --no-cache-dir pillow==11.3.0
+      - |
+        set -eu
+        set -- build/libs/InsomniacServerPatches-*.jar
+        [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "Expected exactly one release JAR" >&2; exit 1; }
+        jar="$1"
+        set -- ci/title-probe/build/libs/InsomniacTitleProbe-*.jar
+        [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "Expected exactly one title probe JAR" >&2; exit 1; }
+        probe="$1"
+        set -- ci/player-test-mod/build/libs/InsomniacPlayerTests-*.jar
+        [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "Expected exactly one player-test JAR" >&2; exit 1; }
+        test_mod="$1"
+        docker build -f ci/Dockerfile.client -t insomniac-client-smoke:11.1.1 .
+        python3 ci/player_tests/run.py all --snapshot /ci-input/server \
+          --prism-root /ci-input/prism \
+          --instance-id 'Tensura by Insomniac Gaming' --profile "$PRISM_PROFILE" \
+          --jar "$jar" --probe "$probe" --test-mod "$test_mod"

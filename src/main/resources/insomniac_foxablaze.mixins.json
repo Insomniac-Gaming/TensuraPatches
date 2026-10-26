@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.insomniacgaming.serverpatches.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["fox.VeldoraOfferMixin", "fox.HellSniperOfferMixin", "fox.MammonOfferMixin", "fox.VelgryndOfferMixin"],
+  "injectors": {"defaultRequire": 1}
+}

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from release_notes import (compile_fragments, compile_release,
                            extract_version_notes, merge_changelog, preview_changes,
-                           validate_project_version)
+                           read_client_version, validate_project_version)
 
 
 class ReleaseNotesTests(unittest.TestCase):
@@ -62,11 +62,13 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_compiles_ordered_fragments_and_replaces_pending_section(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            (root / "gradle.properties").write_text("compatible_client_version=0.2.0\n")
             folder = root / "changes"
             folder.mkdir(parents=True)
             (folder / "02-Kept.md").write_text("- Lootr remains.\n")
             (folder / "01-Removed.md").write_text("- Old quests stop.\n")
             section = compile_fragments(root, "0.2.0")
+            self.assertIn("**Compatible client version:** 0.2.0", section)
             self.assertLess(section.index("### Removed"), section.index("### Kept"))
             original = "# Changelog\n\n## [0.2.0]\n\n- Old text.\n\n## [0.1.0]\n\n- First.\n"
             # The current release is regenerated, while earlier history stays intact.
@@ -79,6 +81,7 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_missing_or_empty_fragments_block_release(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            (root / "gradle.properties").write_text("compatible_client_version=0.2.0\n")
             with self.assertRaisesRegex(ValueError, "No change fragments"):
                 compile_fragments(root, "0.2.0")
             folder = root / "changes"
@@ -90,7 +93,8 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_tagged_release_consumes_changes_once(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / "gradle.properties").write_text("mod_version=0.3.0\n")
+            (root / "gradle.properties").write_text(
+                "mod_version=0.3.0\ncompatible_client_version=0.2.0\n")
             (root / "CHANGELOG.md").write_text("# Changelog\n\n## [0.2.0]\n\n- Earlier.\n")
             folder = root / "changes"
             folder.mkdir()
@@ -98,6 +102,7 @@ class ReleaseNotesTests(unittest.TestCase):
             notes = compile_release(root, "0.3.0")
             changelog = (root / "CHANGELOG.md").read_text()
             self.assertIn("- A new feature.", notes)
+            self.assertIn("**Compatible client version:** 0.2.0", notes)
             self.assertLess(changelog.index("## [0.3.0]"), changelog.index("## [0.2.0]"))
             self.assertIn("- A new feature.", changelog)
             self.assertEqual(list(folder.glob("*.md")), [])
@@ -118,18 +123,33 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_preview_does_not_consume_initial_pending_release(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / "gradle.properties").write_text("mod_version=0.2.0\n")
+            (root / "gradle.properties").write_text(
+                "mod_version=0.2.0\ncompatible_client_version=0.2.0\n")
             (root / "CHANGELOG.md").write_text("# Changelog\n")
             folder = root / "changes"
             folder.mkdir()
             fragment = folder / "01-Fixed.md"
             fragment.write_text("- Restored skill locks.\n")
             self.assertIn("Restored skill locks", preview_changes(root))
+            self.assertIn("**Compatible client version:** 0.2.0", preview_changes(root))
             self.assertTrue(fragment.exists())
             self.assertNotIn("## [0.2.0]", (root / "CHANGELOG.md").read_text())
             compile_release(root, "0.2.0")
             self.assertFalse(fragment.exists())
             self.assertIn("## [0.2.0]", (root / "CHANGELOG.md").read_text())
+
+    def test_requires_exactly_one_valid_client_compatibility_version(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            properties = root / "gradle.properties"
+            for invalid in ("mod_version=0.3.0\n",
+                            "compatible_client_version=latest\n",
+                            "compatible_client_version=0.2.0\ncompatible_client_version=0.2.1\n"):
+                properties.write_text(invalid)
+                with self.assertRaisesRegex(ValueError, "compatible_client_version"):
+                    read_client_version(root)
+            properties.write_text("compatible_client_version=0.2.0\n")
+            self.assertEqual(read_client_version(root), "0.2.0")
 
 
 if __name__ == "__main__":
