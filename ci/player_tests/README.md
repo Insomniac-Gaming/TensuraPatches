@@ -20,6 +20,8 @@ does not contain either test mod.
   the two-slot limit, unlocking, and the stored locks. It then uses Tensura's
   skill reset path and checks that locked skills remain owned while an unlocked
   skill is removed. It uses no copied player data.
+  `skillOffersAcceptNamespacedId` checks that both `/skilloffers` actions parse
+  a namespaced skill ID in full and that suppressing the matching offer works.
 - `scenarios/*.py` are real-client cases. Each declares `NAME` and `FIXTURE`
   and implements `run(session)`. The shared `PlayerSession` provides MC Pilot
   actions, server and player commands, screen/widget observations, bounded

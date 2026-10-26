@@ -37,6 +37,45 @@ public final class PlayerStateGameTests {
     }
 
     @GameTest(template = "empty", timeoutTicks = 200)
+    public static void skillOffersAcceptNamespacedId(GameTestHelper helper) {
+        LOGGER.info("INSOMNIAC_GAMETEST_START skill_offers_accept_namespaced_id");
+        try {
+            ServerPlayer player = FakePlayerFactory.getMinecraft(helper.getLevel());
+            var dispatcher = helper.getLevel().getServer().getCommands().getDispatcher();
+            var source = player.createCommandSourceStack();
+            String id = "foxablazeultimate:veldora";
+            String accept = "skilloffers accept " + id;
+            String suppress = "skilloffers suppress " + id;
+
+            // Brigadier previously stopped at the colon and rejected the rest as trailing data.
+            var parsedAccept = dispatcher.parse(accept, source);
+            helper.assertFalse(parsedAccept.getReader().canRead(), "Accept did not consume the entire skill ID");
+            helper.assertTrue(parsedAccept.getExceptions().isEmpty(), "Accept failed to parse the skill ID");
+            var parsedSuppress = dispatcher.parse(suppress, source);
+            helper.assertFalse(parsedSuppress.getReader().canRead(), "Suppress did not consume the entire skill ID");
+            helper.assertTrue(parsedSuppress.getExceptions().isEmpty(), "Suppress failed to parse the skill ID");
+            CompoundTag persisted = player.getPersistentData().getCompound("PlayerPersisted");
+            persisted.remove("InsomniacAutoSkillOffers");
+            player.getPersistentData().put("PlayerPersisted", persisted);
+            helper.assertTrue(dispatcher.execute(parsedAccept) == 0, "Accept unexpectedly found a test offer");
+
+            CompoundTag offers = new CompoundTag();
+            CompoundTag offer = new CompoundTag();
+            offer.putString("skill", id);
+            offers.put(id, offer);
+            persisted.put("InsomniacAutoSkillOffers", offers);
+            player.getPersistentData().put("PlayerPersisted", persisted);
+            helper.assertTrue(dispatcher.execute(parsedSuppress) == 1, "Suppress command did not match the offer");
+            helper.assertTrue(offers.getCompound(id).getBoolean("suppressed"), "Offer was not suppressed");
+            helper.succeed();
+            LOGGER.info("INSOMNIAC_GAMETEST_PASS skill_offers_accept_namespaced_id");
+        } catch (Exception exception) {
+            LOGGER.error("Namespaced skill offer GameTest failed", exception);
+            helper.fail("Could not exercise namespaced skill offer commands: " + exception);
+        }
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 200)
     public static void fullResetClearsVoidSpiritContract(GameTestHelper helper) {
         LOGGER.info("INSOMNIAC_GAMETEST_START full_reset_clears_void_spirit_contract");
         // This pack sends custom payloads during login. Minecraft's embedded

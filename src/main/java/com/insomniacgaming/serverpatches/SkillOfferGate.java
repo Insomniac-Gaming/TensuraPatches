@@ -1,6 +1,5 @@
 package com.insomniacgaming.serverpatches;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
@@ -97,13 +96,13 @@ public final class SkillOfferGate {
         event.getDispatcher().register(Commands.literal("skilloffers")
                 .executes(ctx -> list(ctx.getSource().getPlayerOrException()))
                 .then(Commands.literal("accept")
-                        .then(Commands.argument("skill-id", StringArgumentType.word())
+                        .then(Commands.argument("skill-id", ResourceLocationArgument.id())
                                 .executes(ctx -> accept(ctx.getSource().getPlayerOrException(),
-                                        StringArgumentType.getString(ctx, "skill-id")))))
+                                        ResourceLocationArgument.getId(ctx, "skill-id").toString()))))
                 .then(Commands.literal("suppress")
-                        .then(Commands.argument("skill-id", StringArgumentType.word())
+                        .then(Commands.argument("skill-id", ResourceLocationArgument.id())
                                 .executes(ctx -> suppress(ctx.getSource().getPlayerOrException(),
-                                        StringArgumentType.getString(ctx, "skill-id"))))));
+                                        ResourceLocationArgument.getId(ctx, "skill-id").toString())))));
     }
 
     private static List<String> matching(CompoundTag offers, String id) {

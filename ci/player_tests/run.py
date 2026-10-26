@@ -63,6 +63,7 @@ def restrict_pilot_mixins(jar: Path):
 GAME_TEST_MARKERS = (
     "INSOMNIAC_GAMETEST_PASS full_reset_clears_void_spirit_contract",
     "INSOMNIAC_GAMETEST_PASS rebirth_locks_reported_skills",
+    "INSOMNIAC_GAMETEST_PASS skill_offers_accept_namespaced_id",
 )
 FIXTURE_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 PLAYER_NAME = re.compile(r"^[A-Za-z0-9_]{1,16}$")
@@ -291,7 +292,8 @@ def execute(args):
                         break
                     if any(name in logs.lower() for name in (
                             "fullresetclearsvoidspiritcontract failed",
-                            "rebirthlocksreportedskills failed")):
+                            "rebirthlocksreportedskills failed",
+                            "skilloffersacceptnamespacedid failed")):
                         raise TestFailure("Player GameTest failed; see server log")
                     time.sleep(2)
                 else:
